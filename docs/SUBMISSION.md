@@ -1,0 +1,79 @@
+# Submission kit — The WebMCP Challenge
+
+Deadline: **Wednesday 3 September 2026, 1:00 PM PDT** (4:00 PM EDT). Devpost: https://webmcp.devpost.com/
+
+## Checklist
+
+- [ ] Live URL reachable in Chrome 149+ with `chrome://flags/#enable-webmcp-testing` **and** in ChatGPT's in-app browser
+- [ ] `pnpm e2e https://app.waggle.thecrowbarcrew.cc/` passes from the laptop (real Chrome, real relay)
+- [ ] Relay reseeded so the first thing a judge sees is the seeded team, not our test posts
+- [ ] Video < 3:00, public on YouTube, audio, no third-party music/trademarks
+- [ ] Repo public, `LICENSE` visible at the top of the GitHub page (MIT — done)
+- [ ] Devpost form: title, tagline, description (below), video link, repo link, live URL, built-with tags
+- [ ] Prior-work statement in the form (all code from 2026-09-01; see README)
+
+## Devpost fields
+
+**Title:** Waggle
+
+**Tagline:** Your agent can dance. Only you can fly. A chat client where the browser's agent can read everything and sign nothing.
+
+**Built with:** WebMCP · TypeScript · React · Vite · nostr-tools · Nostr (NIP-29/42/50) · Buzz relay · Docker · Traefik
+
+### Inspiration
+
+Every "agent in chat" design we have seen gives the agent an account: its own key, its own memberships, its own
+audit trail. That is right for an agent that works in the room as a peer. It is wrong for the agent at your elbow —
+the one reading over your shoulder that says "want me to answer that?" That agent should have **no key at all**.
+WebMCP is the first thing that makes that agent practical: the tools live in your tab, under your session, and they
+can see what you are looking at. No server, no OAuth, no bot account.
+
+### What it does
+
+Waggle is a small NIP-29 group-chat client that publishes eleven WebMCP tools. Six are reads — the current view
+(including the message you have selected), channels, a channel's messages, a thread, search, a member. Five are
+`propose_*` tools — message, reply, reaction, channel topic, join. A proposal is not a post: it is a card in the
+Waggles dock. You edit it, then **Sign & send** with a key the agent never touches, or reject it. The signed event
+carries `["proposed-by","webmcp","<n>"]`, so anyone reading the relay can tell agent-drafted from hand-typed.
+
+### How we built it
+
+- `src/tools/` is framework-free and talks only to a `WaggleContext` interface, so the same tools can be lifted into
+  another client. Registration uses `document.modelContext.registerTool` with `readOnlyHint` annotations on reads.
+- `src/relay/` speaks NIP-29 + NIP-42 + NIP-50 over nostr-tools, with a mock relay for zero-network demos.
+- Identity is NIP-07 if present, otherwise a key generated in the page. The demo relay is a real
+  [Buzz](https://github.com/block/buzz) relay we deployed for this, open to throwaway keys so judges can post.
+- `scripts/e2e.mjs` proves the loop through the browser's own API: `getTools()` → `executeTool()` → human click →
+  event found on the relay by an unrelated key, provenance intact.
+
+### Challenges
+
+Chrome passes `execute()` its arguments as a JSON string, and `navigator.modelContext` is deprecated in favour of
+`document.modelContext` — both learned by running the real browser, not the docs. The relay rejects events more than
+15 minutes off server time, which shaped how we seed a believable conversation. And the hardest design question was
+the smallest one: the button says **Sign & send**, not Send, because the word *sign* is the whole point.
+
+### What's next
+
+Carry the tools module into Buzz as a right-dock feature, and emit Buzz's reserved approval kinds (46010/46030) so a
+proposal, its ruling, and the resulting message are three linked events in one log — the correction log an agent can
+learn from.
+
+## Video — beat sheet (target 2:40)
+
+| t | Shot | Say |
+|---|---|---|
+| 0:00 | Title card, bee, tagline | "Waggle. Your agent can dance. Only you can fly." |
+| 0:08 | Slide: two agents — member vs elbow | "Agents in chat usually get their own account. This is the other kind: the agent at your elbow. It has no key." |
+| 0:25 | Chrome, Waggle open, WebMCP chip green | "This is a normal chat client on a Nostr relay. The page publishes eleven WebMCP tools. Six read. Five propose. None can post." |
+| 0:40 | Ask agent: "What did I miss in #general?" | Agent answers from `read_channel`. "It reads what I can see — same session, same tab." |
+| 0:58 | Click Priya's message. Ask: "Reply to this saying we turned it off because judges arrive with throwaway keys." | "‘This’ works, because the selection is part of the view the tools expose." |
+| 1:15 | Card appears in the Waggles dock. Edit one word. | "It didn't post. It proposed. I can change it, reject it, or sign it." |
+| 1:30 | Click **Sign & send**. Message appears in the channel. Split screen: Buzz desktop shows it landing. | "Signed with my key, which the agent never had. It's on a real Buzz relay." |
+| 1:50 | Ask: "React 👍 to Sam's message about the mobile build." → card → sign | "Reactions, topics, joins — same path. Propose, then rule." |
+| 2:05 | Show event JSON: `client: waggle`, `proposed-by: webmcp` | "Every signed event says whether an agent drafted it. That tag is the audit trail — and the training data." |
+| 2:20 | Slide: `WaggleContext` interface + right-dock in Buzz | "The tools module is framework-free. It drops into Buzz as one more dock. Approval gates, with no workflow engine." |
+| 2:35 | End card: URL, repo | "Waggle. The agent dances. You decide whether to fly." |
+
+Recording notes: 1440×900 window, dark theme, hide bookmarks bar, `?relay=` default (live), a fresh key so the npub
+in the header isn't yours. Rehearse once with `?relay=mock` so the agent's answers are predictable, then record live.
