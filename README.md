@@ -32,6 +32,18 @@ WebMCP makes that agent possible without a server, an OAuth dance, or a bot acco
 So the division of labour is honest: the agent does the reading and drafting, you do the judging, and the page is the
 shared workbench where both of you can see the same state.
 
+### What this does and does not guarantee
+
+We tested Waggle with a computer-use agent too (Claude in Chrome, which does not speak WebMCP). It never saw the
+tools. It took a screenshot, found the composer, typed the reply, and clicked **Send** — as your hands would — and the
+page accepted it as you, because from the page's point of view it *was* you: same session, same key, same button. No
+page can tell a human click from a driven one.
+
+So the guarantee is bounded, and we would rather say so than pretend: **an agent that uses the tools cannot post; an
+agent that drives your cursor is you.** That is not a hole in Waggle, it is the case for WebMCP. Computer-use makes
+every "human" button on the web a fiction. WebMCP lets a site offer agents a door that is not pretending to be the
+human — and the provenance tag is where the difference becomes visible on the wire.
+
 ## Try it
 
 Live app: **https://app.waggle.thecrowbarcrew.cc** — talking to a real [Buzz](https://github.com/block/buzz) relay at

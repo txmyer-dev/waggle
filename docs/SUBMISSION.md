@@ -74,6 +74,7 @@ learn from.
 | 1:30 | Click **Sign & send**. Message appears in the channel. Split screen: Buzz desktop shows it landing. | "Signed with my key, which the agent never had. It's on a real Buzz relay." |
 | 1:50 | Ask: "React 👍 to Sam's message about the mobile build." → card → sign | "Reactions, topics, joins — same path. Propose, then rule." |
 | 2:05 | Show event JSON: `client: waggle`, `proposed-by: webmcp` | "Every signed event says whether an agent drafted it. That tag is the audit trail — and the training data." |
+| 2:12 | Quick cut: a computer-use agent typing into the composer | "A screenshot-and-click agent can still pretend to be me — no page can stop that. That's the point: WebMCP gives agents a door that isn't pretending to be the human." |
 | 2:20 | Slide: `WaggleContext` interface + right-dock in Buzz | "The tools module is framework-free. It drops into Buzz as one more dock. Approval gates, with no workflow engine." |
 | 2:35 | End card: URL, repo | "Waggle. The agent dances. You decide whether to fly." |
 
