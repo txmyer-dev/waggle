@@ -45,7 +45,7 @@ function channelOrCurrent(ctx: WaggleContext, params: Record<string, unknown>): 
   return current.id;
 }
 
-function compactMessage(m: ViewMessage) {
+function compactMessage(m: ViewMessage, selectedId?: string | null) {
   return {
     id: m.id,
     author: m.author ?? m.pubkey.slice(0, 8),
@@ -54,7 +54,42 @@ function compactMessage(m: ViewMessage) {
     created_at: m.created_at,
     ...(m.rootId ? { rootId: m.rootId } : {}),
     ...(m.replyTo ? { replyTo: m.replyTo } : {}),
+    ...(selectedId && m.id === selectedId ? { selected: true } : {}),
   };
+}
+
+/**
+ * Real agents do not reliably call get_current_view before anything else, so every
+ * read carries the selection too: the selected message is flagged in the list and
+ * named again at the top level, in words.
+ */
+function withSelection(ctx: WaggleContext, messages: ViewMessage[], payload: Record<string, unknown>) {
+  const sel = ctx.getView().selectedMessage;
+  const list = messages.map((m) => compactMessage(m, sel?.id));
+  if (!sel) return { ...payload, selectedMessageId: null, messages: list };
+  return {
+    ...payload,
+    selectedMessageId: sel.id,
+    selectionHint:
+      `The human has selected message ${sel.id} by ${sel.author ?? sel.pubkey.slice(0, 8)}: ` +
+      `"${sel.content.slice(0, 120)}". When they say "this message", "that one", or just "reply", they mean it.`,
+    messages: list,
+  };
+}
+
+/**
+ * For "reply to this" / "react to this": an explicit id wins, otherwise the message the
+ * human has selected. With neither, tell the agent exactly how to recover.
+ */
+function selectedOr(ctx: WaggleContext, params: Record<string, unknown>, key: string): string {
+  const explicit = str(params, key);
+  if (explicit) return explicit;
+  const sel = ctx.getView().selectedMessage;
+  if (sel) return sel.id;
+  throw new Error(
+    `No ${key} given and the human has no message selected. Either ask them to click the message ` +
+      `(it gets a "selected" label), or call read_channel and pass the id of the message you mean as ${key}.`,
+  );
 }
 
 function compactChannel(c: ChannelSummary) {
@@ -99,7 +134,9 @@ export function buildWaggleTools(ctx: WaggleContext): ToolDefinition[] {
       name: "read_channel",
       description:
         "Read recent messages in a channel, newest last. Defaults to the channel the human has open. " +
-        "Each message has an id you can pass to propose_reply, propose_reaction, or read_thread.",
+        "Each message has an id you can pass to propose_reply, propose_reaction, or read_thread. " +
+        "If the human has clicked a message, it is flagged selected:true and named in selectionHint — " +
+        "that is what 'this message' means.",
       inputSchema: {
         type: "object",
         properties: {
@@ -113,7 +150,7 @@ export function buildWaggleTools(ctx: WaggleContext): ToolDefinition[] {
         const channelId = channelOrCurrent(ctx, params);
         const limit = Math.min(200, Math.max(1, num(params, "limit") ?? 50));
         const messages = await ctx.readChannel(channelId, { limit, since: num(params, "since") });
-        return json({ channelId, count: messages.length, messages: messages.map(compactMessage) });
+        return json(withSelection(ctx, messages, { channelId, count: messages.length }));
       },
     },
     {
@@ -130,7 +167,7 @@ export function buildWaggleTools(ctx: WaggleContext): ToolDefinition[] {
       execute: async (params) => {
         const rootId = need(params, "root_id");
         const messages = await ctx.readThread(rootId);
-        return json({ rootId, count: messages.length, messages: messages.map(compactMessage) });
+        return json(withSelection(ctx, messages, { rootId, count: messages.length }));
       },
     },
     {
@@ -150,7 +187,7 @@ export function buildWaggleTools(ctx: WaggleContext): ToolDefinition[] {
       execute: async (params) => {
         const query = need(params, "query");
         const messages = await ctx.searchMessages(query, str(params, "channel_id"));
-        return json({ query, count: messages.length, messages: messages.map(compactMessage) });
+        return json(withSelection(ctx, messages, { query, count: messages.length }));
       },
     },
     {
@@ -190,22 +227,25 @@ export function buildWaggleTools(ctx: WaggleContext): ToolDefinition[] {
       name: "propose_reply",
       description:
         "Draft a reply to a specific message and place it in front of the human as a proposal card. " +
-        "The human decides whether to sign and send. If the human said 'reply to this', use the " +
-        "selectedMessage id from get_current_view as parent_id.",
+        "The human decides whether to sign and send. If the human said 'reply to this' or just 'reply', " +
+        "omit parent_id: it defaults to the message they have selected.",
       inputSchema: {
         type: "object",
         properties: {
-          parent_id: { type: "string", description: "Id of the message being replied to." },
+          parent_id: {
+            type: "string",
+            description: "Id of the message being replied to. Omit to reply to the message the human has selected.",
+          },
           content: { type: "string", description: "The full reply text, exactly as it should be sent." },
           channel_id: { type: "string", description: "Channel id. Omit for the open channel." },
         },
-        required: ["parent_id", "content"],
+        required: ["content"],
       },
       execute: async (params) =>
         proposeAndReport(ctx, {
           kind: "reply",
           channelId: channelOrCurrent(ctx, params),
-          parentId: need(params, "parent_id"),
+          parentId: selectedOr(ctx, params, "parent_id"),
           content: need(params, "content"),
         }),
     },
@@ -213,21 +253,24 @@ export function buildWaggleTools(ctx: WaggleContext): ToolDefinition[] {
       name: "propose_reaction",
       description:
         "Propose an emoji reaction to a message. The human sees the card and decides whether to sign it. " +
-        "Use a single emoji such as 👍 or ❤️ or ✅.",
+        "Use a single emoji such as 👍 or ❤️ or ✅. Omit target_id to react to the message the human has selected.",
       inputSchema: {
         type: "object",
         properties: {
-          target_id: { type: "string", description: "Id of the message to react to." },
+          target_id: {
+            type: "string",
+            description: "Id of the message to react to. Omit to react to the message the human has selected.",
+          },
           emoji: { type: "string", description: "One emoji." },
           channel_id: { type: "string", description: "Channel id. Omit for the open channel." },
         },
-        required: ["target_id", "emoji"],
+        required: ["emoji"],
       },
       execute: async (params) =>
         proposeAndReport(ctx, {
           kind: "reaction",
           channelId: channelOrCurrent(ctx, params),
-          targetId: need(params, "target_id"),
+          targetId: selectedOr(ctx, params, "target_id"),
           emoji: need(params, "emoji"),
         }),
     },

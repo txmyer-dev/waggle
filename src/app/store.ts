@@ -116,8 +116,12 @@ export class AppStore {
       await this.relay.connect(identity.sign, identity.pubkey);
       const channels = await this.relay.listChannels();
       this.set({ channels, booting: false });
-      const first = this.state.currentChannelId ?? channels[0]?.id ?? null;
-      if (first) await this.openChannel(first);
+      // Restore where the human was. Agent browsers (ChatGPT's in particular) can reload the
+      // page between the human's click and the agent's tool call; the selection must survive that.
+      const saved = this.loadView();
+      const remembered = saved?.channelId && channels.some((c) => c.id === saved.channelId) ? saved.channelId : null;
+      const first = this.state.currentChannelId ?? remembered ?? channels[0]?.id ?? null;
+      if (first) await this.openChannel(first, remembered === first ? saved?.selectedMessageId ?? null : null);
     } catch (e) {
       this.set({ bootError: e instanceof Error ? e.message : String(e), booting: false });
     }
@@ -135,14 +139,42 @@ export class AppStore {
 
   // ---- channels & messages ----------------------------------------------
 
-  async openChannel(channelId: string): Promise<void> {
+  async openChannel(channelId: string, restoreSelection: string | null = null): Promise<void> {
     this.unsubscribeLive?.();
     this.unsubscribeLive = null;
     this.set({ currentChannelId: channelId, selectedMessageId: null, threadRootId: null });
+    this.saveView();
     const list = await this.relay.readChannel(channelId, { limit: 80 });
     this.set({ messages: { ...this.state.messages, [channelId]: list } });
+    if (restoreSelection && list.some((m) => m.id === restoreSelection)) {
+      this.set({ selectedMessageId: restoreSelection });
+    }
     void this.hydrateMembers(list.map((m) => m.pubkey));
     this.unsubscribeLive = this.relay.subscribeChannel(channelId, (m) => this.ingest(m));
+  }
+
+  // The human's place in the app, persisted per relay so a reload lands them back on the
+  // same channel with the same message selected.
+  private viewKey(): string {
+    return `waggle:view:${this.state.relayUrl}`;
+  }
+  private saveView(): void {
+    try {
+      localStorage.setItem(
+        this.viewKey(),
+        JSON.stringify({ channelId: this.state.currentChannelId, selectedMessageId: this.state.selectedMessageId }),
+      );
+    } catch {
+      /* storage unavailable: selection just won't survive a reload */
+    }
+  }
+  private loadView(): { channelId: string | null; selectedMessageId: string | null } | null {
+    try {
+      const raw = localStorage.getItem(this.viewKey());
+      return raw ? (JSON.parse(raw) as { channelId: string | null; selectedMessageId: string | null }) : null;
+    } catch {
+      return null;
+    }
   }
 
   private ingest(m: Message): void {
@@ -164,6 +196,7 @@ export class AppStore {
 
   selectMessage(id: string | null): void {
     this.set({ selectedMessageId: id });
+    this.saveView();
   }
 
   openThread(rootId: string | null): void {

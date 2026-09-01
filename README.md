@@ -110,6 +110,13 @@ finds the reply — threaded under the right parent, signed by the human's key, 
 Testing 151; console clean. Two things it taught us: Chrome hands `execute` its arguments as a **JSON string**, and
 `navigator.modelContext` still exists but logs a deprecation in favour of `document.modelContext`.
 
+A first live test with real agents (Chrome's and ChatGPT's) showed a third thing: agents do not reliably call
+`get_current_view` before acting, so a selection that only lived there was invisible to them. Now every read
+(`read_channel`, `read_thread`, `search_messages`) flags the selected message with `selected: true` and repeats it in
+a `selectionHint` sentence; `propose_reply` and `propose_reaction` default to the selected message when no id is
+given; and the selection is persisted per relay so it survives the page reloads agent browsers sometimes do between
+your click and their tool call. `pnpm e2e "http://127.0.0.1:4173/?relay=mock"` exercises all of that with no network.
+
 ![After signing: the card shows "signed by you · event 19afeaed…" and the reply is on the relay](docs/waggle-signed.png)
 
 ## How this maps onto Buzz

@@ -105,7 +105,54 @@ test("errors come back as text through the registered wrapper", async () => {
   await registerWaggleTools(fakeCtx(), { modelContext: mc });
   const reply = mc.tools.find((t) => t.name === "propose_reply")!;
   const out = await reply.execute({});
-  assert.match(String(out), /^Error from propose_reply: Missing required argument "parent_id"/);
+  assert.match(String(out), /^Error from propose_reply: Missing required argument "content"/);
+});
+
+test("propose_reply and propose_reaction default to the message the human selected", async () => {
+  const ctx = fakeCtx();
+  const byName = Object.fromEntries(buildWaggleTools(ctx).map((t) => [t.name, t]));
+  await byName.propose_reply.execute({ content: "on it" });
+  assert.deepEqual(ctx.proposed[0], { kind: "reply", channelId: "general", parentId: "m1", content: "on it" });
+  await byName.propose_reaction.execute({ emoji: "👍" });
+  assert.deepEqual(ctx.proposed[1], { kind: "reaction", channelId: "general", targetId: "m1", emoji: "👍" });
+  // An explicit id still wins over the selection.
+  await byName.propose_reply.execute({ parent_id: "m9", content: "x" });
+  assert.equal((ctx.proposed[2] as { parentId: string }).parentId, "m9");
+});
+
+test("without a selection or an id, propose_reply explains how to recover", async () => {
+  const ctx = fakeCtx({
+    getView: () => ({
+      relayUrl: "mock",
+      channel: { id: "general", name: "general" },
+      selectedMessage: null,
+      me: { pubkey: "me", npub: "npub1me" },
+      pendingProposals: 0,
+    }),
+  });
+  const reply = buildWaggleTools(ctx).find((t) => t.name === "propose_reply")!;
+  await assert.rejects(
+    async () => {
+      await reply.execute({ content: "hi" });
+    },
+    (e: unknown) => e instanceof Error && /no message selected[\s\S]*read_channel/.test(e.message),
+  );
+  assert.equal(ctx.proposed.length, 0);
+});
+
+test("read tools flag the selected message and say so in words", async () => {
+  const ctx = fakeCtx({
+    readChannel: async () => [
+      { id: "m0", pubkey: "pk0", content: "earlier", created_at: 0 },
+      { id: "m1", pubkey: "pk1", content: "hello", created_at: 1 },
+    ],
+  });
+  const read = buildWaggleTools(ctx).find((t) => t.name === "read_channel")!;
+  const out = JSON.parse(String(await read.execute({})));
+  assert.equal(out.selectedMessageId, "m1");
+  assert.match(out.selectionHint, /selected message m1/);
+  assert.equal(out.messages[0].selected, undefined);
+  assert.equal(out.messages[1].selected, true);
 });
 
 test("read tools fall back to the open channel", async () => {
