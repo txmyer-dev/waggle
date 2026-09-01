@@ -9,6 +9,7 @@ export const KIND = {
   REACTION: 7,
   GROUP_MESSAGE: 9,
   GROUP_EDIT_METADATA: 9002,
+  GROUP_CREATE: 9007,
   GROUP_JOIN_REQUEST: 9021,
   CLIENT_AUTH: 22242,
   GROUP_METADATA: 39000,
@@ -96,6 +97,57 @@ export function buildJoinRequest(
   now = nowSeconds(),
 ): UnsignedEvent {
   return base(KIND.GROUP_JOIN_REQUEST, withProvenance([["h", channelId]], provenance), reason, now);
+}
+
+/** NIP-29 group creation as Buzz accepts it: `name`, optional `about`, `visibility` open|private. */
+export function buildGroupCreate(
+  name: string,
+  about: string,
+  isPrivate: boolean,
+  now = nowSeconds(),
+): UnsignedEvent {
+  const tags: string[][] = [
+    ["name", name],
+    ["about", about],
+    ["visibility", isPrivate ? "private" : "open"],
+  ];
+  return base(KIND.GROUP_CREATE, tags, "", now);
+}
+
+/** Tags that mark a message in the drafts channel as Waggle's own bookkeeping. */
+export const DRAFT_TAG = "waggle";
+
+/**
+ * A proposal, posted into the human's private drafts channel so it can be ruled on
+ * from Buzz. Signed by the human (it is their private room), but never carries
+ * `proposed-by`: it is not the message, it is the card.
+ */
+export function buildDraftPost(
+  channelId: string,
+  content: string,
+  proposalId: number,
+  now = nowSeconds(),
+): UnsignedEvent {
+  const tags: string[][] = [["h", channelId], CLIENT_TAG, [DRAFT_TAG, "draft", String(proposalId)]];
+  return base(KIND.GROUP_MESSAGE, tags, content, now);
+}
+
+/** The ruling's receipt, threaded under the draft post. */
+export function buildOutcomePost(
+  channelId: string,
+  content: string,
+  draft: Pick<Message, "id" | "pubkey">,
+  proposalId: number,
+  now = nowSeconds(),
+): UnsignedEvent {
+  const tags: string[][] = [
+    ["h", channelId],
+    ["e", draft.id, "", "root"],
+    ["p", draft.pubkey],
+    CLIENT_TAG,
+    [DRAFT_TAG, "outcome", String(proposalId)],
+  ];
+  return base(KIND.GROUP_MESSAGE, tags, content, now);
 }
 
 export function buildAuth(relayUrl: string, challenge: string, now = nowSeconds()): UnsignedEvent {

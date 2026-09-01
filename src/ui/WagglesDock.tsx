@@ -2,7 +2,7 @@ import { useState } from "react";
 import { store } from "../app/store.ts";
 import type { Proposal } from "../proposals/store.ts";
 import { shortId, timeAgo } from "./format.ts";
-import { useProposals } from "./useStore.ts";
+import { useAppState, useProposals } from "./useStore.ts";
 
 export function WagglesDock() {
   const proposals = useProposals();
@@ -59,6 +59,7 @@ const KIND_LABEL: Record<Proposal["draft"]["kind"], string> = {
 };
 
 function Card({ p }: { p: Proposal }) {
+  const rulings = useAppState().rulings;
   const field = editableField(p);
   const [busy, setBusy] = useState(false);
   const pending = p.status === "pending";
@@ -110,11 +111,14 @@ function Card({ p }: { p: Proposal }) {
             <button className="btn btn-ghost" disabled={busy} onClick={() => store.proposals.reject(p.id)}>
               Reject
             </button>
-            <span className="muted small">drafted by agent · unsigned</span>
+            <span className="muted small">
+              drafted by agent · unsigned{rulings.enabled && rulings.posted[p.id] ? " · also in #waggle-drafts — ✅ there signs it" : ""}
+            </span>
           </>
         ) : p.status === "sent" ? (
           <span className="small">
-            ✅ signed by you · event <code className="mono">{shortId(p.eventId ?? "")}</code>
+            ✅ signed by you{rulings.ruledFromBuzz[p.id] ? ` from Buzz${rulings.ruledFromBuzz[p.id] === "edit" ? ", with your edit" : ""}` : ""} ·
+            event <code className="mono">{shortId(p.eventId ?? "")}</code>
           </span>
         ) : p.status === "failed" ? (
           <>

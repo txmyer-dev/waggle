@@ -156,6 +156,22 @@ export class NostrRelay implements RelayClient {
     return () => sub.close();
   }
 
+  async readReactions(channelId: string, since?: number): Promise<Message[]> {
+    const filter: Filter = { kinds: [KIND.REACTION], "#h": [channelId], limit: 200 };
+    if (since) filter.since = since;
+    const events = await this.query([filter]);
+    return dedupe(events.map(toMessage)).sort((a, b) => a.created_at - b.created_at);
+  }
+
+  subscribeReactions(channelId: string, onReaction: (reaction: Message) => void): () => void {
+    const relay = this.need();
+    const since = Math.floor(Date.now() / 1000) - 5;
+    const sub = relay.subscribe([{ kinds: [KIND.REACTION], "#h": [channelId], since }], {
+      onevent: (ev) => onReaction(toMessage(ev)),
+    });
+    return () => sub.close();
+  }
+
   async readThread(rootId: string, channelId: string): Promise<Message[]> {
     const [roots, replies] = await Promise.all([
       this.query([{ ids: [rootId] }]),

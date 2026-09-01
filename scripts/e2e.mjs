@@ -72,6 +72,28 @@ const after = JSON.parse(await call("get_current_view", {}));
 if (after.selectedMessage?.id !== view.selectedMessage.id) throw new Error("selection did not survive a reload");
 console.log("reload: selection restored");
 
+// Rule from Buzz: turn it on, propose, then stand in for Buzz with a real reaction under
+// the human's key (dev hook) and check the tab signs the message.
+if (/[?&]dev=1/.test(url) || /[?&]relay=mock/.test(url)) {
+  await page.getByRole("button", { name: /rule from buzz/i }).click();
+  await page.getByRole("button", { name: /^turn on$/i }).click();
+  await page.waitForSelector("text=Rule from Buzz · on", { timeout: 20000 });
+  await page.keyboard.press("Escape").catch(() => {});
+  const r2 = await call("propose_reply", { content: `ruled from Buzz ${Date.now()}` });
+  const pid = Number(/Proposal #(\d+)/.exec(r2)?.[1]);
+  await page.waitForFunction((id) => !!window.waggleDev && !!document.body.innerText.includes(`#${id}`), pid, { timeout: 15000 });
+  // wait until the draft post exists (rulings.posted has it) by polling the dev hook
+  await page.waitForFunction(
+    async (id) => {
+      try { await window.waggleDev.simulateBuzzRuling(id, "✅"); return true; } catch { return false; }
+    },
+    pid,
+    { timeout: 20000, polling: 500 },
+  );
+  await page.waitForSelector("text=from Buzz", { timeout: 20000 });
+  console.log(`rule from Buzz: proposal #${pid} signed via a ✅ reaction under the human's key`);
+}
+
 if (/[?&]relay=mock/.test(url)) {
   await browser.close();
   if (problems.length) { console.log("problems:\n" + problems.join("\n")); process.exit(1); }

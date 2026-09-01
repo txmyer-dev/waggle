@@ -9,6 +9,8 @@ import { buildMessage, buildReply } from "../relay/events.ts";
 import { createRelay, relayUrlFromLocation } from "../relay/index.ts";
 import type { Channel, Member, Message, RelayClient, RelayStatus } from "../relay/types.ts";
 import { ProposalStore } from "../proposals/store.ts";
+import { buildReaction } from "../relay/events.ts";
+import { Rulings, type RulingsState } from "../rulings/controller.ts";
 import { registerWaggleTools } from "../tools/register.ts";
 import type { ToolDefinition, WaggleContext } from "../tools/types.ts";
 import * as nip19 from "nostr-tools/nip19";
@@ -31,7 +33,10 @@ export type AppState = {
   booting: boolean;
   bootError: string | null;
   flags: { dev: boolean };
+  rulings: RulingsState;
 };
+
+const RULINGS_IDLE: RulingsState = { enabled: false, channelId: null, posted: {}, ruledFromBuzz: {}, busy: false, error: null };
 
 type Listener = () => void;
 
@@ -39,6 +44,7 @@ export class AppStore {
   state: AppState;
   relay: RelayClient;
   proposals: ProposalStore;
+  rulings: Rulings | null = null;
   private listeners = new Set<Listener>();
   private unsubscribeLive: (() => void) | null = null;
   private toolsAbort = new AbortController();
@@ -63,7 +69,15 @@ export class AppStore {
       booting: true,
       bootError: null,
       flags: { dev: params.get("dev") === "1" },
+      rulings: RULINGS_IDLE,
     };
+    if (this.state.flags.dev) {
+      // Dev-only: stand in for Buzz. Publishes a real reaction/reply under the human's key,
+      // so the whole ruling path runs except the click in the other client.
+      (globalThis as unknown as { waggleDev?: unknown }).waggleDev = {
+        simulateBuzzRuling: (proposalId: number, content: string) => this.simulateBuzzRuling(proposalId, content),
+      };
+    }
     this.proposals = new ProposalStore({
       sign: (t) => {
         const id = this.state.identity;
@@ -122,6 +136,7 @@ export class AppStore {
       const remembered = saved?.channelId && channels.some((c) => c.id === saved.channelId) ? saved.channelId : null;
       const first = this.state.currentChannelId ?? remembered ?? channels[0]?.id ?? null;
       if (first) await this.openChannel(first, remembered === first ? saved?.selectedMessageId ?? null : null);
+      await this.armRulings(identity.pubkey);
     } catch (e) {
       this.set({ bootError: e instanceof Error ? e.message : String(e), booting: false });
     }
@@ -151,6 +166,61 @@ export class AppStore {
     }
     void this.hydrateMembers(list.map((m) => m.pubkey));
     this.unsubscribeLive = this.relay.subscribeChannel(channelId, (m) => this.ingest(m));
+  }
+
+  // ---- rule from Buzz -------------------------------------------------------
+
+  private async armRulings(pubkey: string): Promise<void> {
+    this.rulings = new Rulings({
+      relay: this.relay,
+      sign: (t) => {
+        const id = this.state.identity;
+        if (!id) throw new Error("No identity loaded.");
+        return id.sign(t);
+      },
+      myPubkey: () => pubkey,
+      proposals: this.proposals,
+      approve: async (id) => {
+        await this.approveProposal(id);
+        const p = this.proposals.get(id);
+        return p?.status === "sent" ? (p.eventId ?? null) : null;
+      },
+      authorName: (pk) => this.authorName(pk),
+      storageKey: `waggle:rulings:${this.state.relayUrl}:${pubkey}`,
+      storage: globalThis.localStorage,
+      onChange: (rulings) => {
+        const gained = rulings.channelId && !this.state.channels.some((c) => c.id === rulings.channelId);
+        this.set({ rulings });
+        if (gained) void this.refreshChannels();
+      },
+    });
+    this.set({ rulings: this.rulings.state });
+    await this.rulings.resume();
+  }
+
+  async toggleRulings(): Promise<void> {
+    if (!this.rulings) return;
+    if (this.rulings.state.enabled) this.rulings.disable();
+    else await this.rulings.enable();
+  }
+
+  private async refreshChannels(): Promise<void> {
+    const channels = await this.relay.listChannels().catch(() => this.state.channels);
+    this.set({ channels });
+  }
+
+  /** Dev-only stand-in for a ruling made in Buzz: a reaction (✅/❌) or a reply (edited text). */
+  async simulateBuzzRuling(proposalId: number, content: string): Promise<string> {
+    const identity = this.state.identity;
+    const r = this.rulings?.state;
+    const draftId = r?.posted[proposalId];
+    if (!identity || !r?.channelId || !draftId) throw new Error("No draft post for that proposal (is Rule from Buzz on?)");
+    const isMark = /^[✅✔☑❌✖🚫⛔+\-]️?$|^:[a-z_]+:$/u.test(content.trim());
+    const unsigned = isMark
+      ? buildReaction(r.channelId, { id: draftId, pubkey: identity.pubkey }, content.trim(), null)
+      : buildReply(r.channelId, content, { id: draftId, pubkey: identity.pubkey }, null);
+    const signed = await identity.sign(unsigned);
+    return this.relay.publish(signed);
   }
 
   // The human's place in the app, persisted per relay so a reload lands them back on the
@@ -307,7 +377,10 @@ export class AppStore {
         };
       },
       listChannels: async () =>
-        (await this.relay.listChannels()).map((c) => ({
+        (await this.relay.listChannels())
+          // The drafts channel is the human's private desk, not a room agents work in.
+          .filter((c) => !this.rulings?.isDraftsChannel(c.id))
+          .map((c) => ({
           id: c.id,
           name: c.name,
           ...(c.topic ? { topic: c.topic } : {}),

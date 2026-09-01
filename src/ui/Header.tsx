@@ -7,7 +7,9 @@ export function Header() {
   const s = useAppState();
   const proposals = useProposals();
   const pending = proposals.filter((p) => p.status === "pending").length;
-  const [open, setOpen] = useState<null | "identity" | "webmcp">(null);
+  const [open, setOpen] = useState<null | "identity" | "webmcp" | "rulings">(null);
+  const rulings = s.rulings;
+  const rulingsDot = rulings.enabled ? "ok" : rulings.error ? "bad" : "muted";
 
   const relayLabel = s.relayUrl === "mock" ? "mock relay" : s.relayUrl.replace(/^wss?:\/\//, "");
   const relayDot =
@@ -30,6 +32,13 @@ export function Header() {
         <button className={`chip chip-btn ${s.webmcp.available ? "dot-ok" : "dot-muted"}`} onClick={() => setOpen(open === "webmcp" ? null : "webmcp")}>
           <i className="dot" /> WebMCP {s.webmcp.available ? `· ${toolCount} tools` : "· off"}
         </button>
+        <button
+          className={`chip chip-btn dot-${rulingsDot}`}
+          title="Rule on proposals from Buzz (or any Nostr client) with a ✅ / ❌ reaction"
+          onClick={() => setOpen(open === "rulings" ? null : "rulings")}
+        >
+          <i className="dot" /> Rule from Buzz {rulings.busy ? "· …" : rulings.enabled ? "· on" : "· off"}
+        </button>
         <button className="chip chip-btn" onClick={() => setOpen(open === "identity" ? null : "identity")}>
           🔑 {s.identity ? shortNpub(s.identity.npub) : "…"}
           <span className="muted"> · {s.identity?.source === "nip07" ? "extension" : "local key"}</span>
@@ -37,8 +46,47 @@ export function Header() {
         {pending > 0 ? <span className="chip chip-accent">{pending} waiting</span> : null}
       </div>
       {open === "webmcp" ? <WebmcpPopover onClose={() => setOpen(null)} /> : null}
+      {open === "rulings" ? <RulingsPopover onClose={() => setOpen(null)} /> : null}
       {open === "identity" ? <IdentityPopover onClose={() => setOpen(null)} /> : null}
     </header>
+  );
+}
+
+function RulingsPopover({ onClose }: { onClose: () => void }) {
+  const s = useAppState();
+  const r = s.rulings;
+  const channel = r.channelId ? s.channels.find((c) => c.id === r.channelId) : undefined;
+  return (
+    <div className="popover">
+      <div className="popover-head">
+        <strong>Rule from Buzz</strong>
+        <button className="btn btn-ghost" onClick={onClose}>
+          ×
+        </button>
+      </div>
+      <p>
+        When this is on, every proposal is also posted — under your key — into a <strong>private</strong> channel on this relay,
+        {channel ? <code> #{channel.name}</code> : <code> #waggle-drafts</code>}. Open that channel in Buzz on your desktop or phone and
+        rule there: react <strong>✅</strong> to sign &amp; send, <strong>❌</strong> to reject, or <strong>reply with the text you'd rather
+        send</strong>. Your reaction is a signed event; this tab sees it and signs the real message. Keep this tab open — it is
+        your signer.
+      </p>
+      <p className="muted small">
+        Use the same key here and in Buzz (import your nsec from the 🔑 chip). Only reactions from this key count; a 👍 is just a
+        👍.
+      </p>
+      {r.error ? <p className="error small">{r.error}</p> : null}
+      <div className="row">
+        <button className={`btn ${r.enabled ? "btn-ghost" : "btn-accent"}`} disabled={r.busy} onClick={() => void store.toggleRulings()}>
+          {r.busy ? "Working…" : r.enabled ? "Turn off" : "Turn on"}
+        </button>
+        {r.enabled && channel ? (
+          <button className="btn btn-ghost" onClick={() => void store.openChannel(channel.id)}>
+            Open #{channel.name} here
+          </button>
+        ) : null}
+      </div>
+    </div>
   );
 }
 

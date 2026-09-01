@@ -159,10 +159,46 @@ export class MockRelay implements RelayClient {
     return this.profiles.get(pubkey) ?? { pubkey };
   }
 
+  private reactions: Message[] = [];
+  private reactionSubs = new Map<string, Set<(m: Message) => void>>();
+
+  async readReactions(channelId: string, since?: number): Promise<Message[]> {
+    return this.reactions
+      .filter((r) => r.channelId === channelId && (since ? r.created_at > since : true))
+      .sort((a, b) => a.created_at - b.created_at);
+  }
+
+  subscribeReactions(channelId: string, onReaction: (reaction: Message) => void): () => void {
+    let set = this.reactionSubs.get(channelId);
+    if (!set) this.reactionSubs.set(channelId, (set = new Set()));
+    set.add(onReaction);
+    return () => set!.delete(onReaction);
+  }
+
   async publish(event: SignedEvent): Promise<string> {
     await new Promise((r) => setTimeout(r, 120));
+    if (event.kind === KIND.GROUP_CREATE) {
+      const name = firstTag(event.tags, "name") ?? "untitled";
+      const isPrivate = firstTag(event.tags, "visibility") === "private";
+      this.channels.push({ id: fakeId(`group:${name}:${event.id}`), name, about: firstTag(event.tags, "about"), isOpen: !isPrivate });
+      return event.id;
+    }
     const channelId = firstTag(event.tags, "h");
     if (!channelId) throw new Error("mock relay: event has no h tag");
+    if (event.kind === KIND.REACTION) {
+      const reaction: Message = {
+        id: event.id,
+        pubkey: event.pubkey,
+        content: event.content,
+        created_at: event.created_at,
+        channelId,
+        kind: event.kind,
+        tags: event.tags,
+      };
+      this.reactions.push(reaction);
+      for (const l of this.reactionSubs.get(channelId) ?? []) l(reaction);
+      return event.id;
+    }
     if (event.kind === KIND.GROUP_EDIT_METADATA) {
       const topic = firstTag(event.tags, "topic");
       this.channels = this.channels.map((c) => (c.id === channelId && topic !== undefined ? { ...c, topic } : c));

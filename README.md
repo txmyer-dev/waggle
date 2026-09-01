@@ -32,6 +32,22 @@ WebMCP makes that agent possible without a server, an OAuth dance, or a bot acco
 So the division of labour is honest: the agent does the reading and drafting, you do the judging, and the page is the
 shared workbench where both of you can see the same state.
 
+### Rule from Buzz
+
+You should not have to keep Waggle open to do the one thing only you can do. Turn on **Rule from Buzz** (header chip) and
+every proposal is also posted — under your key — into a **private** channel on the relay, `#waggle-drafts`. Open that
+channel in any Nostr client on any device — [Buzz](https://github.com/block/buzz) desktop, Buzz mobile — and rule there:
+
+- react **✅** → this tab signs and sends the real message;
+- react **❌** → rejected, nothing signed;
+- **reply with different text** → the draft is replaced with your words, then signed and sent.
+
+Your reaction is itself a signed event, so the ruling is authenticated: only reactions from *your* key count (a 👍 is
+just a 👍, and a stranger's ✅ is ignored). The tab that has Waggle open is your signer — the key never leaves it — and
+a receipt (`✅ Signed & sent · event 19af…`) lands under each draft, so the drafts channel becomes your ruling log.
+The agent works in the browser; you live in Buzz. Rulings that arrive while the tab was closed are caught up on
+reconnect.
+
 ### What this does and does not guarantee
 
 We tested Waggle with a computer-use agent too (Claude in Chrome, which does not speak WebMCP). It never saw the
@@ -154,6 +170,9 @@ is the complementary half — the agent with no key — and it was built in Buzz
   that interface over its own state and gets the same eleven tools.
 - **The Waggles dock** is a right-hand region that renders proposals; it is designed to become one more kind of
   right-dock content in a client that already has such a region.
+- **Rule from Buzz already works against a Buzz relay** — the drafts channel is a private NIP-29 group and the rulings
+  are ordinary kind 7 / kind 9 events, so Buzz needs no change to be the gavel. A Buzz-side patch that renders a 🐝
+  badge on messages carrying `proposed-by` lives on the `waggle/bee-badge` branch of the author's fork.
 - **Provenance → approvals.** Buzz reserves event kinds for approvals (`46010`–`46012`, `46030`/`46031`). Today
   Waggle records provenance with a tag on the signed event; the natural next step is to emit the approval kinds so a
   proposal, its ruling, and the resulting event are three linked events in the same log.

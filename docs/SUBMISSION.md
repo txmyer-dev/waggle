@@ -61,7 +61,27 @@ Carry the tools module into Buzz as a right-dock feature, and emit Buzz's reserv
 proposal, its ruling, and the resulting message are three linked events in one log — the correction log an agent can
 learn from.
 
-## Video — beat sheet (target 2:40)
+## Video — beat sheet v2 (target 2:45) — "the agent works in the browser; I live in Buzz"
+
+| t | Shot | Say |
+|---|---|---|
+| 0:00 | Title card, bee, tagline | "Waggle. Your agent can dance. Only you can fly." |
+| 0:07 | Slide: member agent (own key) vs elbow agent (no key) | "Agents in chat usually get their own account. This is the other kind: the one at your elbow. It has no key. It can read everything I can see — and it can't post." |
+| 0:22 | ChatGPT desktop → Work → built-in browser on Waggle; **Site tools** shows 11 | "Eleven WebMCP tools. Six read. Five propose. None can send." |
+| 0:32 | Split screen: Buzz desktop on the left (`#general`), ChatGPT+Waggle on the right. In Buzz, Marco asks: "does the shop have the leather bag under $200?" | "Here's my team, in Buzz. Marco has a question I'd have to go look up." |
+| 0:45 | In ChatGPT: "Check the shop for a leather bag under $200 and answer Marco." Agent opens template.vercel.shop, calls its search tool, comes back to Waggle, calls `propose_reply` | "The agent uses the store's WebMCP tools, then Waggle's. Two sites, one errand." |
+| 1:05 | Cut to **Buzz on the phone** (or Buzz desktop, `#waggle-drafts`): the 🐝 draft post appears — with the bag, the price, the link | "It didn't post. It proposed — into my private drafts room, on the relay I own." |
+| 1:15 | Thumb taps ✅ in Buzz | "That reaction is a signed event by me." |
+| 1:20 | Back to Buzz `#general`: Marco's thread — the reply lands, with the 🐝 badge | "And the tab that has my key signs the real reply. Buzz shows the bee: everyone can see an agent drafted it and I signed it." |
+| 1:35 | Second draft in `#waggle-drafts`; **reply** to it in Buzz with better wording → lands with the edit | "Don't like the words? Reply with better ones. My edit is the correction — that log is the asset." |
+| 1:50 | Show event JSON: `client: waggle`, `proposed-by: webmcp` | "On the wire, every signed event says whether an agent drafted it." |
+| 2:00 | Quick cut: Claude in Chrome typing into the composer | "A screenshot-and-click agent can still pretend to be me. No page can stop that. That's the point: WebMCP gives agents a door that isn't pretending to be the human." |
+| 2:15 | Slide: `WaggleContext` seam · drafts channel = private NIP-29 group · rulings = plain kind 7 / kind 9 | "Buzz needed zero changes to be the gavel. The tools module drops into any client. Approval gates, no workflow engine." |
+| 2:35 | End card: URL, repo | "Waggle. The agent dances. You decide whether to fly." |
+
+Recording notes: same nsec in Buzz and Waggle (import the owner key from `~/waggle-relay/OWNER_KEY.txt` in both). Waggle tab stays open the whole time — it is the signer. Rehearse the ChatGPT segment three times and keep the best take. Phone shot: Buzz mobile if it runs; else Buzz desktop's `#waggle-drafts` is fine.
+
+## Video — beat sheet v1 (superseded, kept for reference)
 
 | t | Shot | Say |
 |---|---|---|

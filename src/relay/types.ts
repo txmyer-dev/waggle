@@ -76,4 +76,8 @@ export interface RelayClient {
   searchMessages(query: string, channelId?: string): Promise<Message[]>;
   getMember(pubkey: string): Promise<Member>;
   publish(event: SignedEvent): Promise<string>;
+  /** kind:7 reactions in a channel, historical. Buzz scopes reactions to the target's channel. */
+  readReactions(channelId: string, since?: number): Promise<Message[]>;
+  /** Live kind:7 reactions in a channel. (Buzz fans these out by `#h`, not by `#e`.) */
+  subscribeReactions(channelId: string, onReaction: (reaction: Message) => void): () => void;
 }
