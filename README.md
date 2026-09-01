@@ -11,6 +11,8 @@ ever sees events signed by you, and each one carries a tag saying whether an age
 
 Built for [The WebMCP Challenge](https://webmcp.devpost.com/), September 2026.
 
+![Waggle with a proposal card waiting: the human selected Priya's question, the agent drafted a reply, and the card says "drafted by agent · unsigned" until the human signs](docs/waggle-proposal.png)
+
 ## The idea
 
 Scout bees do a waggle dance to tell the hive where the flowers are. The scout does not fetch the nectar. The hive
@@ -32,7 +34,9 @@ shared workbench where both of you can see the same state.
 
 ## Try it
 
-Live: **https://waggle.thecrowbarcrew.cc** *(relay and app hosted on the same box; see below)*
+Live app: **https://app.waggle.thecrowbarcrew.cc** — talking to a real [Buzz](https://github.com/block/buzz) relay at
+`wss://waggle.thecrowbarcrew.cc`, seeded with a small team and open to throwaway keys so you can post without
+signing up for anything.
 
 1. **Chrome 149+**: open `chrome://flags/#enable-webmcp-testing`, set it to *Enabled*, relaunch. Or open the URL
    inside **ChatGPT's in-app browser**, which speaks WebMCP natively.
@@ -94,6 +98,19 @@ registration is `registerTool({ name, description, inputSchema, execute, annotat
 `execute(params, { signal })` in Chrome's own demos returns a **plain string**. The explainer shows an MCP-style
 `{ content: [{ type: "text", text }] }` return; we follow the demos and return strings (JSON for structured reads).
 `registerTool` is feature-detected; when it is absent the tool definitions still exist and drive the `?dev=1` bench.
+
+### Verified end to end
+
+`pnpm e2e` (`scripts/e2e.mjs`) launches Chrome with `--enable-features=WebMCP,WebMCPTesting`, opens Waggle, and
+drives it through the **browser's own API** rather than through our code: `document.modelContext.getTools()` lists the
+eleven tools, `executeTool()` reads the current view and the channel, then proposes a reply to the message the human
+selected. A Playwright "human" clicks **Sign & send**, and an independent throwaway key connects to the relay and
+finds the reply — threaded under the right parent, signed by the human's key, tagged
+`["client","waggle"]` + `["proposed-by","webmcp","1"]`. Run against the live relay on 2026-09-01 with Chrome for
+Testing 151; console clean. Two things it taught us: Chrome hands `execute` its arguments as a **JSON string**, and
+`navigator.modelContext` still exists but logs a deprecation in favour of `document.modelContext`.
+
+![After signing: the card shows "signed by you · event 19afeaed…" and the reply is on the relay](docs/waggle-signed.png)
 
 ## How this maps onto Buzz
 
