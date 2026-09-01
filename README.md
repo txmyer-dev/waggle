@@ -39,10 +39,11 @@ Live app: **https://app.waggle.thecrowbarcrew.cc** — talking to a real [Buzz](
 signing up for anything.
 
 1. Pick an agent that can actually call WebMCP tools — as of September 2026 that is a shorter list than it sounds:
-   - **ChatGPT desktop app** (macOS/Windows): open Waggle in the app's **built-in browser**, choose **GPT-5.6 Sol
-     or Terra** (Luna has WebMCP disabled), make sure *Settings → Browser → Permissions → Enable site tools* is on,
-     and click **Site tools** in the address bar — it should list all eleven. Then just talk to ChatGPT.
-     chatgpt.com in a normal tab does *not* see the tools.
+   - **ChatGPT desktop app** (macOS/Windows): go to **Work** (not Chat — Chat never sees site tools), open Waggle
+     in the app's **built-in browser**, and make sure *Settings → Browser → Permissions → Enable site tools* is on.
+     **Site tools** in the address bar should list all eleven. Then just talk to it. Verified 2026-09-01 on
+     GPT-5.5 from Work; OpenAI's docs also name GPT-5.6 Sol/Terra (Luna has WebMCP disabled). chatgpt.com in a
+     normal tab does *not* see the tools.
    - **Chrome 150+**: enable `chrome://flags/#enable-webmcp-testing`, relaunch, and install Google's
      [Model Context Tool Inspector](https://chromewebstore.google.com/detail/model-context-tool-inspec/gbpdfapgefenggkahomfgkhfehlcenpd).
      Its side panel lists the tools, runs any of them by hand, and — with a Gemini API key from
