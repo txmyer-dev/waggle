@@ -4,7 +4,9 @@ Deadline: **Wednesday 3 September 2026, 1:00 PM PDT** (4:00 PM EDT). Devpost: ht
 
 ## Checklist
 
-- [ ] Live URL reachable in Chrome 149+ with `chrome://flags/#enable-webmcp-testing` **and** in ChatGPT's in-app browser
+- [ ] Live URL works in the **ChatGPT desktop app's built-in browser** (GPT-5.6 Sol/Terra, Site tools on; address bar → Site tools lists 11)
+- [ ] Live URL works in **Chrome 150+** with `chrome://flags/#enable-webmcp-testing` + the Model Context Tool Inspector extension (Gemini agent mode)
+- [ ] The Devpost description tells judges exactly those two setups — Gemini-in-Chrome's side panel can't call tools yet and will say so
 - [ ] `pnpm e2e https://app.waggle.thecrowbarcrew.cc/` passes from the laptop (real Chrome, real relay)
 - [ ] Relay reseeded so the first thing a judge sees is the seeded team, not our test posts
 - [ ] Video < 3:00, public on YouTube, audio, no third-party music/trademarks

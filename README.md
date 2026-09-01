@@ -38,8 +38,17 @@ Live app: **https://app.waggle.thecrowbarcrew.cc** — talking to a real [Buzz](
 `wss://waggle.thecrowbarcrew.cc`, seeded with a small team and open to throwaway keys so you can post without
 signing up for anything.
 
-1. **Chrome 149+**: open `chrome://flags/#enable-webmcp-testing`, set it to *Enabled*, relaunch. Or open the URL
-   inside **ChatGPT's in-app browser**, which speaks WebMCP natively.
+1. Pick an agent that can actually call WebMCP tools — as of September 2026 that is a shorter list than it sounds:
+   - **ChatGPT desktop app** (macOS/Windows): open Waggle in the app's **built-in browser**, choose **GPT-5.6 Sol
+     or Terra** (Luna has WebMCP disabled), make sure *Settings → Browser → Permissions → Enable site tools* is on,
+     and click **Site tools** in the address bar — it should list all eleven. Then just talk to ChatGPT.
+     chatgpt.com in a normal tab does *not* see the tools.
+   - **Chrome 150+**: enable `chrome://flags/#enable-webmcp-testing`, relaunch, and install Google's
+     [Model Context Tool Inspector](https://chromewebstore.google.com/detail/model-context-tool-inspec/gbpdfapgefenggkahomfgkhfehlcenpd).
+     Its side panel lists the tools, runs any of them by hand, and — with a Gemini API key from
+     [AI Studio](https://aistudio.google.com/apikey) — lets you drive them in natural language. **Gemini in Chrome's
+     own side panel does not call WebMCP tools yet**; it will read the page and tell you it can't, and it's right.
+   - **Chrome DevTools** → *Application* → *WebMCP* also lists and runs the tools, no extension needed.
 2. Open Waggle. The header shows a green **WebMCP · 11 tools** chip when the page has published its tools; grey
    means your browser has no `document.modelContext` and the chip explains how to turn it on.
 3. You get a fresh Nostr key on first load (kept in `localStorage`; import your own `nsec` or use a NIP-07 extension

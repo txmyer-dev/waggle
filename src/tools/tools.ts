@@ -11,6 +11,9 @@ import type {
 } from "./types.ts";
 
 const READ_ONLY = { readOnlyHint: true } as const;
+// propose_* never send anything: the human signs. Say so in the hints that ChatGPT's
+// safety review and other agents read, so "propose" is not mistaken for "post".
+const PROPOSE = { readOnlyHint: false, destructiveHint: false } as const;
 
 function json(value: unknown): string {
   return JSON.stringify(value);
@@ -216,6 +219,7 @@ export function buildWaggleTools(ctx: WaggleContext): ToolDefinition[] {
         },
         required: ["content"],
       },
+      annotations: PROPOSE,
       execute: async (params) =>
         proposeAndReport(ctx, {
           kind: "message",
@@ -241,6 +245,7 @@ export function buildWaggleTools(ctx: WaggleContext): ToolDefinition[] {
         },
         required: ["content"],
       },
+      annotations: PROPOSE,
       execute: async (params) =>
         proposeAndReport(ctx, {
           kind: "reply",
@@ -266,6 +271,7 @@ export function buildWaggleTools(ctx: WaggleContext): ToolDefinition[] {
         },
         required: ["emoji"],
       },
+      annotations: PROPOSE,
       execute: async (params) =>
         proposeAndReport(ctx, {
           kind: "reaction",
@@ -287,6 +293,7 @@ export function buildWaggleTools(ctx: WaggleContext): ToolDefinition[] {
         },
         required: ["topic"],
       },
+      annotations: PROPOSE,
       execute: async (params) =>
         proposeAndReport(ctx, {
           kind: "topic",
@@ -307,6 +314,7 @@ export function buildWaggleTools(ctx: WaggleContext): ToolDefinition[] {
         },
         required: ["channel_id"],
       },
+      annotations: PROPOSE,
       execute: async (params) =>
         proposeAndReport(ctx, {
           kind: "join",

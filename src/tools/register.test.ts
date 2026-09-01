@@ -69,10 +69,14 @@ test("every tool has an object input schema and a description", () => {
   }
 });
 
-test("read tools are annotated read-only; propose tools are not", () => {
+test("read tools are annotated read-only; propose tools are explicitly non-destructive", () => {
   for (const t of buildWaggleTools(fakeCtx())) {
-    if (t.name.startsWith("propose_")) assert.equal(t.annotations?.readOnlyHint, undefined, t.name);
-    else assert.equal(t.annotations?.readOnlyHint, true, t.name);
+    if (t.name.startsWith("propose_")) {
+      assert.equal(t.annotations?.readOnlyHint, false, t.name);
+      assert.equal(t.annotations?.destructiveHint, false, t.name);
+    } else {
+      assert.equal(t.annotations?.readOnlyHint, true, t.name);
+    }
   }
 });
 
