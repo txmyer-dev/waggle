@@ -7,7 +7,8 @@ export function Header() {
   const s = useAppState();
   const proposals = useProposals();
   const pending = proposals.filter((p) => p.status === "pending").length;
-  const [open, setOpen] = useState<null | "identity" | "webmcp" | "rulings">(null);
+  const [open, setOpen] = useState<null | "identity" | "webmcp" | "rulings" | "away">(null);
+  const away = s.away;
   const rulings = s.rulings;
   const rulingsDot = rulings.enabled ? "ok" : rulings.error ? "bad" : "muted";
 
@@ -39,6 +40,13 @@ export function Header() {
         >
           <i className="dot" /> Rule from Buzz {rulings.busy ? "· …" : rulings.enabled ? "· on" : "· off"}
         </button>
+        <button
+          className={`chip chip-btn ${away ? "chip-accent" : ""}`}
+          title="Hold the room: tell Buzz you're away, let the agent draft, rule later"
+          onClick={() => setOpen(open === "away" ? null : "away")}
+        >
+          {away ? `🐝 Away until ${fmtTime(away.until)}` : "Hold the room"}
+        </button>
         <button className="chip chip-btn" onClick={() => setOpen(open === "identity" ? null : "identity")}>
           🔑 {s.identity ? shortNpub(s.identity.npub) : "…"}
           <span className="muted"> · {s.identity?.source === "nip07" ? "extension" : "local key"}</span>
@@ -47,8 +55,83 @@ export function Header() {
       </div>
       {open === "webmcp" ? <WebmcpPopover onClose={() => setOpen(null)} /> : null}
       {open === "rulings" ? <RulingsPopover onClose={() => setOpen(null)} /> : null}
+      {open === "away" ? <AwayPopover onClose={() => setOpen(null)} /> : null}
       {open === "identity" ? <IdentityPopover onClose={() => setOpen(null)} /> : null}
     </header>
+  );
+}
+
+function fmtTime(sec: number): string {
+  return new Date(sec * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+function toLocalInput(sec: number): string {
+  const d = new Date(sec * 1000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function AwayPopover({ onClose }: { onClose: () => void }) {
+  const s = useAppState();
+  const [until, setUntil] = useState(() => toLocalInput(s.away?.until ?? Math.floor(Date.now() / 1000) + 2 * 3600));
+  const [note, setNote] = useState(s.away?.note ?? "");
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="popover">
+      <div className="popover-head">
+        <strong>Hold the room</strong>
+        <button className="btn btn-ghost" onClick={onClose}>
+          ×
+        </button>
+      </div>
+      <p>
+        Step away and let the agent hold the room. Buzz shows your status as <strong>🐝 agent drafting · rulings at
+        {" "}{fmtTime(Math.floor(new Date(until).getTime() / 1000) || 0)}</strong>, so the team can tell the difference between you
+        and your agent. The agent sees you're away, drafts a reply for everything waiting on you (<code>find_waiting_on_me</code>),
+        and the drafts pile up in <code>#waggle-drafts</code> for you to rule from your phone.
+      </p>
+      <div className="row">
+        <label className="small muted">
+          Back at{" "}
+          <input type="datetime-local" value={until} onChange={(e) => setUntil(e.target.value)} />
+        </label>
+        <input placeholder="note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
+      </div>
+      <div className="row">
+        {s.away ? (
+          <button
+            className="btn btn-accent"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              try {
+                await store.clearAway();
+                onClose();
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            I'm back
+          </button>
+        ) : null}
+        <button
+          className={`btn ${s.away ? "btn-ghost" : "btn-accent"}`}
+          disabled={busy || !until}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await store.setAway(Math.floor(new Date(until).getTime() / 1000), note);
+              onClose();
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          {s.away ? "Update" : "I'm away"}
+        </button>
+      </div>
+    </div>
   );
 }
 

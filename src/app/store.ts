@@ -11,7 +11,9 @@ import type { Channel, Member, Message, RelayClient, RelayStatus } from "../rela
 import { ProposalStore } from "../proposals/store.ts";
 import { Rulings, type RulingsState } from "../rulings/controller.ts";
 import { registerWaggleTools } from "../tools/register.ts";
-import type { ToolDefinition, WaggleContext } from "../tools/types.ts";
+import type { Away, ToolDefinition, WaggleContext } from "../tools/types.ts";
+import { waitingOnMe } from "../tools/waiting.ts";
+import { buildUserStatus } from "../relay/events.ts";
 import * as nip19 from "nostr-tools/nip19";
 
 export type WebmcpState = { available: boolean; registered: string[]; errors: { name: string; error: string }[] };
@@ -33,6 +35,8 @@ export type AppState = {
   bootError: string | null;
   flags: { dev: boolean };
   rulings: RulingsState;
+  /** "Hold the room": the human is away, the agent drafts, the room is told. */
+  away: Away | null;
 };
 
 const RULINGS_IDLE: RulingsState = { enabled: false, channelId: null, posted: {}, ruledFromBuzz: {}, busy: false, error: null };
@@ -69,6 +73,7 @@ export class AppStore {
       bootError: null,
       flags: { dev: params.get("dev") === "1" },
       rulings: RULINGS_IDLE,
+      away: null,
     };
     if (this.state.flags.dev) {
       // Dev-only: stand in for Buzz. Publishes a real reaction/reply under the human's key,
@@ -145,6 +150,7 @@ export class AppStore {
       const first = this.state.currentChannelId ?? remembered ?? channels[0]?.id ?? null;
       if (first) await this.openChannel(first, remembered === first ? saved?.selectedMessageId ?? null : null);
       await this.armRulings(identity.pubkey);
+      this.loadAway(identity.pubkey);
     } catch (e) {
       this.set({ bootError: e instanceof Error ? e.message : String(e), booting: false });
     }
@@ -231,6 +237,56 @@ export class AppStore {
       : buildReply(r.channelId, content, { id: draftId, pubkey: identity.pubkey }, null);
     const signed = await identity.sign(unsigned);
     return this.relay.publish(signed);
+  }
+
+  // ---- hold the room --------------------------------------------------------
+
+  private awayKey(pubkey: string): string {
+    return `waggle:away:${this.state.relayUrl}:${pubkey}`;
+  }
+
+  private loadAway(pubkey: string): void {
+    try {
+      const raw = localStorage.getItem(this.awayKey(pubkey));
+      const away = raw ? (JSON.parse(raw) as Away) : null;
+      if (away && away.until > Math.floor(Date.now() / 1000)) this.set({ away });
+      else if (away) void this.clearAway(); // came back while the tab was closed: tell the room
+    } catch {
+      /* no storage */
+    }
+  }
+
+  static awayStatusText(away: Away): string {
+    const until = new Date(away.until * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    return `agent drafting · rulings at ${until}${away.note ? ` · ${away.note}` : ""}`;
+  }
+
+  /** Tell the room (Buzz renders kind 30315 as the user's status) and tell the agent (via the view). */
+  async setAway(untilSec: number, note?: string): Promise<void> {
+    const identity = this.state.identity;
+    if (!identity) return;
+    const away: Away = { until: untilSec, ...(note?.trim() ? { note: note.trim() } : {}) };
+    this.set({ away });
+    try {
+      localStorage.setItem(this.awayKey(identity.pubkey), JSON.stringify(away));
+    } catch {
+      /* no storage */
+    }
+    const signed = await identity.sign(buildUserStatus(AppStore.awayStatusText(away), "🐝"));
+    await this.relay.publish(signed).catch(() => undefined);
+  }
+
+  async clearAway(): Promise<void> {
+    const identity = this.state.identity;
+    this.set({ away: null });
+    if (!identity) return;
+    try {
+      localStorage.removeItem(this.awayKey(identity.pubkey));
+    } catch {
+      /* no storage */
+    }
+    const signed = await identity.sign(buildUserStatus("", ""));
+    await this.relay.publish(signed).catch(() => undefined);
   }
 
   // The human's place in the app, persisted per relay so a reload lands them back on the
@@ -378,13 +434,32 @@ export class AppStore {
         const ch = this.currentChannel();
         const sel = this.state.selectedMessageId ? this.findMessage(this.state.selectedMessageId) : undefined;
         const me = this.state.identity;
+        const myName = me ? this.state.members[me.pubkey]?.name : undefined;
         return {
           relayUrl: this.state.relayUrl,
           channel: ch ? { id: ch.id, name: ch.name, ...(ch.topic ? { topic: ch.topic } : {}) } : null,
           selectedMessage: sel ? toView(sel) : null,
-          me: me ? { pubkey: me.pubkey, npub: me.npub } : { pubkey: "", npub: "" },
+          recentMessages: ch ? (this.state.messages[ch.id] ?? []).slice(-10).map(toView) : [],
+          me: me ? { pubkey: me.pubkey, npub: me.npub, ...(myName ? { name: myName } : {}) } : { pubkey: "", npub: "" },
           pendingProposals: this.proposals.pendingCount(),
+          away: this.state.away,
         };
+      },
+      findWaitingOnMe: async (opts = {}) => {
+        const me = this.state.identity;
+        if (!me) return [];
+        const since = Math.floor(Date.now() / 1000) - Math.round((opts.sinceHours ?? 24) * 3600);
+        const channels = (await this.relay.listChannels()).filter((c) => !this.rulings?.isDraftsChannel(c.id));
+        const inputs = await Promise.all(
+          channels.map(async (c) => {
+            const list = await this.relay.readChannel(c.id, { limit: 100, since }).catch(() => [] as Message[]);
+            await this.hydrateMembers(list.map((m) => m.pubkey));
+            return { channelId: c.id, channelName: c.name, messages: list.map(toView) };
+          }),
+        );
+        const myName = this.state.members[me.pubkey]?.name;
+        const names = [myName, me.npub, `@${myName ?? ""}`].filter((n): n is string => !!n && n.length >= 3);
+        return waitingOnMe(inputs, { pubkey: me.pubkey, names }, { since, limit: opts.limit });
       },
       listChannels: async () =>
         (await this.relay.listChannels())

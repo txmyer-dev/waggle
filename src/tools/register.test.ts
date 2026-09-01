@@ -17,7 +17,9 @@ function fakeCtx(overrides: Partial<WaggleContext> = {}) {
       selectedMessage: { id: "m1", pubkey: "pk1", content: "hello", created_at: 1 },
       me: { pubkey: "me", npub: "npub1me" },
       pendingProposals: 0,
+      away: null,
     }),
+    findWaitingOnMe: async () => [],
     listChannels: async () => [{ id: "general", name: "general", topic: "t" }],
     readChannel: async () => [{ id: "m1", pubkey: "pk1", content: "hello", created_at: 1 }],
     readThread: async () => [],
@@ -44,12 +46,12 @@ function fakeModelContext() {
   return mc;
 }
 
-test("registers all 11 tools when a model context exists", async () => {
+test("registers all 12 tools when a model context exists", async () => {
   const mc = fakeModelContext();
   const res = await registerWaggleTools(fakeCtx(), { modelContext: mc });
   assert.equal(res.webmcpAvailable, true);
   assert.deepEqual(res.registered, [...WAGGLE_TOOL_NAMES]);
-  assert.equal(mc.tools.length, 11);
+  assert.equal(mc.tools.length, 12);
   assert.deepEqual(res.errors, []);
 });
 
@@ -57,7 +59,7 @@ test("returns definitions but registers nothing when WebMCP is absent", async ()
   const res = await registerWaggleTools(fakeCtx(), { modelContext: null });
   assert.equal(res.webmcpAvailable, false);
   assert.equal(res.registered.length, 0);
-  assert.equal(res.tools.length, 11);
+  assert.equal(res.tools.length, 12);
 });
 
 test("every tool has an object input schema and a description", () => {
@@ -132,6 +134,7 @@ test("without a selection or an id, propose_reply explains how to recover", asyn
       selectedMessage: null,
       me: { pubkey: "me", npub: "npub1me" },
       pendingProposals: 0,
+      away: null,
     }),
   });
   const reply = buildWaggleTools(ctx).find((t) => t.name === "propose_reply")!;

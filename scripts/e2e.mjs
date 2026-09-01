@@ -50,6 +50,11 @@ if (channel.selectedMessageId !== view.selectedMessage.id || !channel.selectionH
 if (!channel.messages.some((m) => m.selected === true)) throw new Error("read_channel did not flag the selected message");
 console.log(`read_channel: ${channel.count} messages, selection flagged, hint present`);
 
+// The inbox view: what's waiting on the human, across channels.
+const waiting = JSON.parse(await call("find_waiting_on_me", { since_hours: 48 }));
+if (typeof waiting.count !== "number" || !Array.isArray(waiting.items)) throw new Error("find_waiting_on_me shape");
+console.log(`find_waiting_on_me: ${waiting.count} item(s)${waiting.items[0] ? ` — first: [${waiting.items[0].reason}] ${waiting.items[0].content.slice(0, 40)}…` : ""}`);
+
 // "Reply to this" — no parent_id; the tool must default to the selected message.
 const text = `e2e ${new Date().toISOString()}: proposed by the browser agent, signed by the human.`;
 const reply = await call("propose_reply", { content: text });

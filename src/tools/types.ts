@@ -15,12 +15,18 @@ export type ViewMessage = {
   replyTo?: string;
 };
 
+export type Away = { until: number; note?: string };
+
 export type View = {
   relayUrl: string;
   channel: ViewChannel | null;
   selectedMessage: ViewMessage | null;
-  me: { pubkey: string; npub: string };
+  /** The last few messages of the open channel, so "reply to this" needs one call, not two. */
+  recentMessages?: ViewMessage[];
+  me: { pubkey: string; npub: string; name?: string };
   pendingProposals: number;
+  /** Set while the human has told the room they are away and the agent is holding it. */
+  away: Away | null;
 };
 
 export type ChannelSummary = ViewChannel & {
@@ -64,6 +70,10 @@ export interface WaggleContext {
   readThread(rootId: string): Promise<ViewMessage[]>;
   searchMessages(query: string, channelId?: string): Promise<ViewMessage[]>;
   getMember(pubkey: string): Promise<MemberSummary>;
+  /** Messages that are waiting on the human: mentions, replies to them, open questions — unanswered. */
+  findWaitingOnMe(opts?: { sinceHours?: number; limit?: number }): Promise<
+    (ViewMessage & { channelId: string; channelName?: string; reason: "mention" | "reply-to-you" | "question" })[]
+  >;
   /** Put a draft in front of the human. Resolves as soon as the card exists. */
   propose(draft: Draft): Promise<ProposalReceipt>;
 }

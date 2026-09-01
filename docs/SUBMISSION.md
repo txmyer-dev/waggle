@@ -4,7 +4,7 @@ Deadline: **Wednesday 3 September 2026, 1:00 PM PDT** (4:00 PM EDT). Devpost: ht
 
 ## Checklist
 
-- [ ] Live URL works in the **ChatGPT desktop app's built-in browser** (GPT-5.6 Sol/Terra, Site tools on; address bar → Site tools lists 11)
+- [ ] Live URL works in the **ChatGPT desktop app's built-in browser** (GPT-5.6 Sol/Terra, Site tools on; address bar → Site tools lists 12)
 - [ ] Live URL works in **Chrome 150+** with `chrome://flags/#enable-webmcp-testing` + the Model Context Tool Inspector extension (Gemini agent mode)
 - [ ] The Devpost description tells judges exactly those two setups — Gemini-in-Chrome's side panel can't call tools yet and will say so
 - [ ] `pnpm e2e https://app.waggle.thecrowbarcrew.cc/` passes from the laptop (real Chrome, real relay)
@@ -32,7 +32,7 @@ can see what you are looking at. No server, no OAuth, no bot account.
 
 ### What it does
 
-Waggle is a small NIP-29 group-chat client that publishes eleven WebMCP tools. Six are reads — the current view
+Waggle is a small NIP-29 group-chat client that publishes twelve WebMCP tools. Seven are reads — the current view
 (including the message you have selected), channels, a channel's messages, a thread, search, a member. Five are
 `propose_*` tools — message, reply, reaction, channel topic, join. A proposal is not a post: it is a card in the
 Waggles dock. You edit it, then **Sign & send** with a key the agent never touches, or reject it. The signed event
@@ -67,13 +67,14 @@ learn from.
 |---|---|---|
 | 0:00 | Title card, bee, tagline | "Waggle. Your agent can dance. Only you can fly." |
 | 0:07 | Slide: member agent (own key) vs elbow agent (no key) | "Agents in chat usually get their own account. This is the other kind: the one at your elbow. It has no key. It can read everything I can see — and it can't post." |
-| 0:22 | ChatGPT desktop → Work → built-in browser on Waggle; **Site tools** shows 11 | "Eleven WebMCP tools. Six read. Five propose. None can send." |
+| 0:22 | ChatGPT desktop → Work → built-in browser on Waggle; **Site tools** shows 12 | "Twelve WebMCP tools. Seven read. Five propose. None can send." |
 | 0:32 | Split screen: Buzz desktop on the left (`#general`), ChatGPT+Waggle on the right. In Buzz, Marco asks: "does the shop have the leather bag under $200?" | "Here's my team, in Buzz. Marco has a question I'd have to go look up." |
 | 0:45 | In ChatGPT: "Check the shop for a leather bag under $200 and answer Marco." Agent opens template.vercel.shop, calls its search tool, comes back to Waggle, calls `propose_reply` | "The agent uses the store's WebMCP tools, then Waggle's. Two sites, one errand." |
 | 1:05 | Cut to **Buzz on the phone** (or Buzz desktop, `#waggle-drafts`): the 🐝 draft post appears — with the bag, the price, the link | "It didn't post. It proposed — into my private drafts room, on the relay I own." |
 | 1:15 | Thumb taps ✅ in Buzz | "That reaction is a signed event by me." |
 | 1:20 | Back to Buzz `#general`: Marco's thread — the reply lands, with the 🐝 badge | "And the tab that has my key signs the real reply. Buzz shows the bee: everyone can see an agent drafted it and I signed it." |
 | 1:35 | Second draft in `#waggle-drafts`; **reply** to it in Buzz with better wording → lands with the edit | "Don't like the words? Reply with better ones. My edit is the correction — that log is the asset." |
+| 1:44 | (optional, if time allows) Click **Hold the room** → "back at 5:00". Buzz shows status *🐝 agent drafting · rulings at 5:00 PM*. Say to ChatGPT: "handle what's waiting on me." Three drafts appear in `#waggle-drafts`. | "Stepping out? Tell the room. The agent drafts everything that's waiting; I rule the stack from my phone later." |
 | 1:50 | Show event JSON: `client: waggle`, `proposed-by: webmcp` | "On the wire, every signed event says whether an agent drafted it." |
 | 2:00 | Quick cut: Claude in Chrome typing into the composer | "A screenshot-and-click agent can still pretend to be me. No page can stop that. That's the point: WebMCP gives agents a door that isn't pretending to be the human." |
 | 2:15 | Slide: `WaggleContext` seam · drafts channel = private NIP-29 group · rulings = plain kind 7 / kind 9 | "Buzz needed zero changes to be the gavel. The tools module drops into any client. Approval gates, no workflow engine." |

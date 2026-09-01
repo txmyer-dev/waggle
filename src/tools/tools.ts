@@ -1,4 +1,4 @@
-// The eleven tools. Reads answer from the context; propose_* hand a draft to
+// The twelve tools. Reads answer from the context; propose_* hand a draft to
 // the human and return a receipt that says so in words an agent will not
 // misread. Descriptions are written for the model, not for us.
 
@@ -117,12 +117,25 @@ export function buildWaggleTools(ctx: WaggleContext): ToolDefinition[] {
     {
       name: "get_current_view",
       description:
-        "What the human is looking at right now in Waggle: the connected relay, the open channel, " +
-        "the message they have selected (if any), their own pubkey, and how many proposals are waiting. " +
-        "Call this first. 'this message' or 'that one' in the human's words means selectedMessage.",
+        "What the human is looking at right now in Waggle: the connected relay, the open channel and its " +
+        "last few messages, the message they have selected (if any), their own pubkey, how many proposals " +
+        "are waiting, and whether they are away. Call this first. 'this message' or 'that one' in the " +
+        "human's words means selectedMessage. If `away` is set, the human is not here: draft replies for " +
+        "what is waiting (see find_waiting_on_me); they will rule on the proposals later from Buzz.",
       inputSchema: { type: "object", properties: {} },
       annotations: READ_ONLY,
-      execute: () => json(ctx.getView()),
+      execute: () => {
+        const view = ctx.getView();
+        if (!view.away) return json(view);
+        const until = new Date(view.away.until * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+        return json({
+          ...view,
+          awayHint:
+            `The human is away until ${until}${view.away.note ? ` (${view.away.note})` : ""}. ` +
+            "Do not wait for them to answer. Use find_waiting_on_me, draft a proposal for each item that deserves a reply, " +
+            "and tell the user the drafts are waiting for the human's signature.",
+        });
+      },
     },
     {
       name: "list_channels",
@@ -144,14 +157,14 @@ export function buildWaggleTools(ctx: WaggleContext): ToolDefinition[] {
         type: "object",
         properties: {
           channel_id: { type: "string", description: "Channel id from list_channels. Omit for the open channel." },
-          limit: { type: "number", description: "How many messages, max 200. Default 50." },
+          limit: { type: "number", description: "How many messages, max 200. Default 25." },
           since: { type: "number", description: "Unix seconds; only messages after this time." },
         },
       },
       annotations: READ_ONLY,
       execute: async (params) => {
         const channelId = channelOrCurrent(ctx, params);
-        const limit = Math.min(200, Math.max(1, num(params, "limit") ?? 50));
+        const limit = Math.min(200, Math.max(1, num(params, "limit") ?? 25));
         const messages = await ctx.readChannel(channelId, { limit, since: num(params, "since") });
         return json(withSelection(ctx, messages, { channelId, count: messages.length }));
       },
@@ -204,6 +217,32 @@ export function buildWaggleTools(ctx: WaggleContext): ToolDefinition[] {
       },
       annotations: READ_ONLY,
       execute: async (params) => json(await ctx.getMember(need(params, "pubkey"))),
+    },
+    {
+      name: "find_waiting_on_me",
+      description:
+        "Everything that is waiting on the human, across their channels: messages that mention them, replies " +
+        "to things they wrote, and open questions — only the ones they have not answered. Newest first, with " +
+        "channelId and a reason. Use it when the human is away or asks 'what's waiting on me' / 'handle my " +
+        "inbox'; then call propose_reply for each item that deserves an answer.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          since_hours: { type: "number", description: "Look back this many hours. Default 24." },
+          limit: { type: "number", description: "At most this many items. Default 20." },
+        },
+      },
+      annotations: READ_ONLY,
+      execute: async (params) => {
+        const items = await ctx.findWaitingOnMe({ sinceHours: num(params, "since_hours"), limit: num(params, "limit") });
+        return json({
+          count: items.length,
+          items: items.map((m) => ({ ...compactMessage(m), channelId: m.channelId, channelName: m.channelName, reason: m.reason })),
+          hint: items.length
+            ? "For each item worth answering, call propose_reply with parent_id and channel_id. The human signs later."
+            : "Nothing is waiting on the human right now.",
+        });
+      },
     },
     {
       name: "propose_message",
@@ -332,6 +371,7 @@ export const WAGGLE_TOOL_NAMES = [
   "read_thread",
   "search_messages",
   "get_member",
+  "find_waiting_on_me",
   "propose_message",
   "propose_reply",
   "propose_reaction",

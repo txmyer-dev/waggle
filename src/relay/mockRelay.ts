@@ -199,6 +199,7 @@ export class MockRelay implements RelayClient {
       this.channels.push({ id: fakeId(`group:${name}:${event.id}`), name, about: firstTag(event.tags, "about"), isOpen: !isPrivate });
       return event.id;
     }
+    if (event.kind === KIND.USER_STATUS) return event.id; // status has no channel; accepted and forgotten
     if (event.kind === KIND.REACTION) {
       // Like Buzz: a reaction's channel comes from its target; and — also like Buzz — a
       // reaction without an `h` tag is stored but never fanned out to a live subscription.

@@ -12,6 +12,7 @@ export const KIND = {
   GROUP_CREATE: 9007,
   GROUP_JOIN_REQUEST: 9021,
   CLIENT_AUTH: 22242,
+  USER_STATUS: 30315,
   GROUP_METADATA: 39000,
   GROUP_ADMINS: 39001,
   GROUP_MEMBERS: 39002,
@@ -148,6 +149,16 @@ export function buildOutcomePost(
     [DRAFT_TAG, "outcome", String(proposalId)],
   ];
   return base(KIND.GROUP_MESSAGE, tags, content, now);
+}
+
+/**
+ * NIP-38 user status as Buzz renders it: kind 30315, `d`=general, optional `emoji` tag,
+ * text in content. Empty text and emoji clear the status.
+ */
+export function buildUserStatus(text: string, emoji: string, now = nowSeconds()): UnsignedEvent {
+  const tags: string[][] = [["d", "general"]];
+  if (emoji) tags.push(["emoji", emoji]);
+  return base(KIND.USER_STATUS, tags, text, now);
 }
 
 export function buildAuth(relayUrl: string, challenge: string, now = nowSeconds()): UnsignedEvent {

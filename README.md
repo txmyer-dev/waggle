@@ -48,6 +48,15 @@ a receipt (`✅ Signed & sent · event 19af…`) lands under each draft, so the 
 The agent works in the browser; you live in Buzz. Rulings that arrive while the tab was closed are caught up on
 reconnect.
 
+### Hold the room
+
+Step away on purpose. **Hold the room** (header chip) takes a "back at" time and an optional note, and does two
+things: it publishes your Buzz status as **🐝 agent drafting · rulings at 5:00 PM** (a plain NIP-38 status event, so
+the whole team can tell your agent from you), and it marks you away in `get_current_view`, where the agent is told
+not to wait for you. One prompt — *"handle what's waiting on me"* — makes the agent call `find_waiting_on_me`
+(mentions, replies to you, open questions, all unanswered) and draft a reply for each. The drafts stack up in
+`#waggle-drafts`; you rule on the lot from your phone. **I'm back** clears the status.
+
 ### What this does and does not guarantee
 
 We tested Waggle with a computer-use agent too (Claude in Chrome, which does not speak WebMCP). It never saw the
@@ -69,7 +78,7 @@ signing up for anything.
 1. Pick an agent that can actually call WebMCP tools — as of September 2026 that is a shorter list than it sounds:
    - **ChatGPT desktop app** (macOS/Windows): go to **Work** (not Chat — Chat never sees site tools), open Waggle
      in the app's **built-in browser**, and make sure *Settings → Browser → Permissions → Enable site tools* is on.
-     **Site tools** in the address bar should list all eleven. Then just talk to it. Verified 2026-09-01 on
+     **Site tools** in the address bar should list all twelve. Then just talk to it. Verified 2026-09-01 on
      GPT-5.5 from Work; OpenAI's docs also name GPT-5.6 Sol/Terra (Luna has WebMCP disabled). chatgpt.com in a
      normal tab does *not* see the tools.
    - **Chrome 150+**: enable `chrome://flags/#enable-webmcp-testing`, relaunch, and install Google's
@@ -78,7 +87,7 @@ signing up for anything.
      [AI Studio](https://aistudio.google.com/apikey) — lets you drive them in natural language. **Gemini in Chrome's
      own side panel does not call WebMCP tools yet**; it will read the page and tell you it can't, and it's right.
    - **Chrome DevTools** → *Application* → *WebMCP* also lists and runs the tools, no extension needed.
-2. Open Waggle. The header shows a green **WebMCP · 11 tools** chip when the page has published its tools; grey
+2. Open Waggle. The header shows a green **WebMCP · 12 tools** chip when the page has published its tools; grey
    means your browser has no `document.modelContext` and the chip explains how to turn it on.
 3. You get a fresh Nostr key on first load (kept in `localStorage`; import your own `nsec` or use a NIP-07 extension
    from the 🔑 chip). Pick a channel, click a message to *select* it, then ask your agent things like:
@@ -120,6 +129,7 @@ so many words, that nothing was sent.
 | `search_messages` | NIP-50 full-text search, optionally per channel. |
 | `get_member` | Profile for a pubkey. |
 | `propose_message` | Draft a message → card. |
+| `find_waiting_on_me` | Mentions, replies to you, and open questions you haven't answered — across channels, newest first. |
 | `propose_reply` | Draft a reply to a message (defaults to the selected one) → card. |
 | `propose_reaction` | Propose an emoji reaction → card. |
 | `propose_channel_topic` | Propose a topic change (kind 9002) → card. |
@@ -141,7 +151,7 @@ registration is `registerTool({ name, description, inputSchema, execute, annotat
 
 `pnpm e2e` (`scripts/e2e.mjs`) launches Chrome with `--enable-features=WebMCP,WebMCPTesting`, opens Waggle, and
 drives it through the **browser's own API** rather than through our code: `document.modelContext.getTools()` lists the
-eleven tools, `executeTool()` reads the current view and the channel, then proposes a reply to the message the human
+twelve tools, `executeTool()` reads the current view and the channel, then proposes a reply to the message the human
 selected. A Playwright "human" clicks **Sign & send**, and an independent throwaway key connects to the relay and
 finds the reply — threaded under the right parent, signed by the human's key, tagged
 `["client","waggle"]` + `["proposed-by","webmcp","1"]`. Run against the live relay on 2026-09-01 with Chrome for
@@ -167,7 +177,7 @@ is the complementary half — the agent with no key — and it was built in Buzz
   9002/9021, kind 39000 discovery). Point `?relay=` at a Buzz relay and it just works; the demo relay *is* a Buzz relay.
 - **The tools module** (`src/tools/`) is framework-free and talks only to a `WaggleContext` interface: `getView`,
   `listChannels`, `readChannel`, `readThread`, `searchMessages`, `getMember`, `propose`. A Buzz client implements
-  that interface over its own state and gets the same eleven tools.
+  that interface over its own state and gets the same twelve tools.
 - **The Waggles dock** is a right-hand region that renders proposals; it is designed to become one more kind of
   right-dock content in a client that already has such a region.
 - **Rule from Buzz already works against a Buzz relay** — the drafts channel is a private NIP-29 group and the rulings
