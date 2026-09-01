@@ -34,7 +34,12 @@ export type ProposalDeps = {
   resolveMessage(id: string): Message | undefined;
   resolveChannelName(id: string): string | undefined;
   now?: () => number;
+  /** Optional persistence, so a ruling made from Buzz after a reload still has a proposal to land on. */
+  storage?: { getItem(k: string): string | null; setItem(k: string, v: string): void };
+  storageKey?: string;
 };
+
+const KEEP_DONE = 30;
 
 type Listener = () => void;
 
@@ -69,6 +74,31 @@ export class ProposalStore {
 
   constructor(deps: ProposalDeps) {
     this.deps = deps;
+    this.restore();
+  }
+
+  private restore(): void {
+    try {
+      const raw = this.deps.storage && this.deps.storageKey ? this.deps.storage.getItem(this.deps.storageKey) : null;
+      if (!raw) return;
+      const items = JSON.parse(raw) as Proposal[];
+      if (!Array.isArray(items)) return;
+      this.items = items;
+      this.nextId = items.reduce((m, p) => Math.max(m, p.id), 0) + 1;
+    } catch {
+      /* corrupt or unavailable storage: start empty */
+    }
+  }
+
+  private persist(): void {
+    if (!this.deps.storage || !this.deps.storageKey) return;
+    try {
+      const pending = this.items.filter((p) => p.status === "pending");
+      const done = this.items.filter((p) => p.status !== "pending").slice(0, KEEP_DONE);
+      this.deps.storage.setItem(this.deps.storageKey, JSON.stringify([...pending, ...done]));
+    } catch {
+      /* storage full or unavailable */
+    }
   }
 
   subscribe(listener: Listener): () => void {
@@ -189,6 +219,7 @@ export class ProposalStore {
   }
 
   private emit(): void {
+    this.persist();
     for (const l of this.listeners) l();
   }
 }

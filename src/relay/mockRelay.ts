@@ -175,6 +175,22 @@ export class MockRelay implements RelayClient {
     return () => set!.delete(onReaction);
   }
 
+  async readReactionsTo(eventIds: string[], author?: string): Promise<Message[]> {
+    const ids = new Set(eventIds);
+    return this.reactions
+      .filter((r) => r.tags.some((t) => t[0] === "e" && ids.has(t[1])))
+      .filter((r) => (author ? r.pubkey === author : true))
+      .sort((a, b) => a.created_at - b.created_at);
+  }
+
+  async readRepliesTo(eventIds: string[], author?: string): Promise<Message[]> {
+    const ids = new Set(eventIds);
+    return this.messages
+      .filter((m) => m.kind === KIND.GROUP_MESSAGE && ((m.rootId && ids.has(m.rootId)) || (m.replyTo && ids.has(m.replyTo))))
+      .filter((m) => (author ? m.pubkey === author : true))
+      .sort((a, b) => a.created_at - b.created_at);
+  }
+
   async publish(event: SignedEvent): Promise<string> {
     await new Promise((r) => setTimeout(r, 120));
     if (event.kind === KIND.GROUP_CREATE) {
@@ -183,9 +199,13 @@ export class MockRelay implements RelayClient {
       this.channels.push({ id: fakeId(`group:${name}:${event.id}`), name, about: firstTag(event.tags, "about"), isOpen: !isPrivate });
       return event.id;
     }
-    const channelId = firstTag(event.tags, "h");
-    if (!channelId) throw new Error("mock relay: event has no h tag");
     if (event.kind === KIND.REACTION) {
+      // Like Buzz: a reaction's channel comes from its target; and — also like Buzz — a
+      // reaction without an `h` tag is stored but never fanned out to a live subscription.
+      const explicit = firstTag(event.tags, "h");
+      const targetId = event.tags.filter((t) => t[0] === "e").at(-1)?.[1];
+      const channelId = explicit ?? this.messages.find((m) => m.id === targetId)?.channelId;
+      if (!channelId) throw new Error("mock relay: reaction has no h tag and its target is unknown");
       const reaction: Message = {
         id: event.id,
         pubkey: event.pubkey,
@@ -196,9 +216,11 @@ export class MockRelay implements RelayClient {
         tags: event.tags,
       };
       this.reactions.push(reaction);
-      for (const l of this.reactionSubs.get(channelId) ?? []) l(reaction);
+      if (explicit) for (const l of this.reactionSubs.get(channelId) ?? []) l(reaction);
       return event.id;
     }
+    const channelId = firstTag(event.tags, "h");
+    if (!channelId) throw new Error("mock relay: event has no h tag");
     if (event.kind === KIND.GROUP_EDIT_METADATA) {
       const topic = firstTag(event.tags, "topic");
       this.channels = this.channels.map((c) => (c.id === channelId && topic !== undefined ? { ...c, topic } : c));

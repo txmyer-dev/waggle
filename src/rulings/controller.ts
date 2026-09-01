@@ -28,8 +28,14 @@ export type RulingsState = {
   error: string | null;
 };
 
+/** How often to ask the relay for rulings on pending drafts. Live fan-out is not reliable (see relay/types.ts). */
+export const POLL_MS = 3000;
+
 export type RulingsDeps = {
-  relay: Pick<RelayClient, "listChannels" | "publish" | "readReactions" | "subscribeReactions" | "readChannel" | "subscribeChannel">;
+  relay: Pick<
+    RelayClient,
+    "listChannels" | "publish" | "subscribeReactions" | "subscribeChannel" | "readReactionsTo" | "readRepliesTo"
+  >;
   sign: Signer;
   myPubkey: () => string;
   proposals: Pick<ProposalStore, "snapshot" | "subscribe" | "get" | "edit" | "reject">;
@@ -40,6 +46,7 @@ export type RulingsDeps = {
   storage?: { getItem(k: string): string | null; setItem(k: string, v: string): void };
   onChange?: (state: RulingsState) => void;
   now?: () => number;
+  pollMs?: number;
 };
 
 type Persisted = Pick<RulingsState, "enabled" | "channelId" | "posted" | "ruledFromBuzz">;
@@ -50,6 +57,8 @@ export class Rulings {
   private unsubs: (() => void)[] = [];
   private seen = new Set<string>();
   private inFlight = new Set<number>();
+  private pollTimer: ReturnType<typeof setInterval> | null = null;
+  private polling = false;
 
   constructor(deps: RulingsDeps) {
     this.deps = deps;
@@ -68,8 +77,9 @@ export class Rulings {
       const channelId = this.state.channelId ?? (await this.findOrCreateChannel());
       this.set({ enabled: true, channelId });
       this.listen(channelId);
-      await this.catchUp(channelId);
+      await this.catchUp();
       await this.postPending();
+      this.startPolling();
     } catch (e) {
       this.set({ enabled: false, error: e instanceof Error ? e.message : String(e) });
     } finally {
@@ -80,7 +90,23 @@ export class Rulings {
   disable(): void {
     for (const u of this.unsubs) u();
     this.unsubs = [];
+    this.stopPolling();
     this.set({ enabled: false });
+  }
+
+  /** Ask the relay for rulings right now — on reconnect, on the tab becoming visible. */
+  poke(): void {
+    if (this.state.enabled) void this.catchUp();
+  }
+
+  private startPolling(): void {
+    if (this.pollTimer) return;
+    this.pollTimer = setInterval(() => void this.catchUp(), (this.deps.pollMs ?? POLL_MS));
+  }
+
+  private stopPolling(): void {
+    if (this.pollTimer) clearInterval(this.pollTimer);
+    this.pollTimer = null;
   }
 
   isDraftsChannel(id: string): boolean {
@@ -111,20 +137,31 @@ export class Rulings {
     ];
   }
 
-  /** Rulings that arrived while this tab was closed. */
-  private async catchUp(channelId: string): Promise<void> {
-    const pendingDraftIds = new Set(
-      Object.entries(this.state.posted)
-        .filter(([pid]) => this.deps.proposals.get(Number(pid))?.status === "pending")
-        .map(([, draftId]) => draftId),
-    );
-    if (pendingDraftIds.size === 0) return;
-    const [reactions, messages] = await Promise.all([
-      this.deps.relay.readReactions(channelId),
-      this.deps.relay.readChannel(channelId, { limit: 200 }),
-    ]);
-    for (const r of reactions) if (pendingDraftIds.has(targetOf(r) ?? "")) await this.onReaction(r);
-    for (const m of messages) if (pendingDraftIds.has(m.rootId ?? "")) await this.onMessage(m);
+  /**
+   * Rulings the live subscriptions did not deliver: everything made while this tab was
+   * closed, and — because Buzz does not fan out its own `h`-less reactions — everything
+   * made from Buzz at all. Queried by `#e` and by the human's own key only.
+   */
+  private async catchUp(): Promise<void> {
+    if (this.polling) return;
+    const pendingDraftIds = Object.entries(this.state.posted)
+      .filter(([pid]) => this.deps.proposals.get(Number(pid))?.status === "pending")
+      .map(([, draftId]) => draftId);
+    if (pendingDraftIds.length === 0) return;
+    this.polling = true;
+    try {
+      const me = this.deps.myPubkey();
+      const [reactions, replies] = await Promise.all([
+        this.deps.relay.readReactionsTo(pendingDraftIds, me),
+        this.deps.relay.readRepliesTo(pendingDraftIds, me),
+      ]);
+      for (const r of reactions) await this.onReaction(r);
+      for (const m of replies) await this.onMessage(m);
+    } catch (e) {
+      this.set({ error: e instanceof Error ? e.message : String(e) });
+    } finally {
+      this.polling = false;
+    }
   }
 
   // ---- outbound: drafts -----------------------------------------------------
@@ -190,8 +227,9 @@ export class Rulings {
     this.seen.add(m.id);
     if (m.pubkey !== this.deps.myPubkey()) return;
     if (m.tags.some((t) => t[0] === DRAFT_TAG)) return; // our own draft/outcome posts
-    if (!m.rootId) return;
-    const p = this.proposalForDraft(m.rootId);
+    const parent = m.rootId ?? m.replyTo;
+    if (!parent) return;
+    const p = this.proposalForDraft(parent);
     if (!p || p.status !== "pending") return;
     const verdict = verdictFromReply(m.content);
     if (!verdict) return;

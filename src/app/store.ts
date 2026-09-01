@@ -9,7 +9,6 @@ import { buildMessage, buildReply } from "../relay/events.ts";
 import { createRelay, relayUrlFromLocation } from "../relay/index.ts";
 import type { Channel, Member, Message, RelayClient, RelayStatus } from "../relay/types.ts";
 import { ProposalStore } from "../proposals/store.ts";
-import { buildReaction } from "../relay/events.ts";
 import { Rulings, type RulingsState } from "../rulings/controller.ts";
 import { registerWaggleTools } from "../tools/register.ts";
 import type { ToolDefinition, WaggleContext } from "../tools/types.ts";
@@ -87,9 +86,18 @@ export class AppStore {
       publish: (e) => this.relay.publish(e),
       resolveMessage: (id) => this.findMessage(id),
       resolveChannelName: (id) => this.state.channels.find((c) => c.id === id)?.name,
+      storage: globalThis.localStorage,
+      storageKey: `waggle:proposals:${relayUrl}`,
     });
     this.proposals.subscribe(() => this.emit());
-    this.relay.onStatus((s) => this.set({ relayStatus: s, relayError: this.relay.lastError }));
+    this.relay.onStatus((s) => {
+      this.set({ relayStatus: s, relayError: this.relay.lastError });
+      if (s === "connected") this.rulings?.poke();
+    });
+    // Agent browsers background the page; ask for rulings the moment it comes back.
+    globalThis.document?.addEventListener?.("visibilitychange", () => {
+      if (document.visibilityState === "visible") this.rulings?.poke();
+    });
   }
 
   // ---- subscription plumbing -------------------------------------------
@@ -216,8 +224,10 @@ export class AppStore {
     const draftId = r?.posted[proposalId];
     if (!identity || !r?.channelId || !draftId) throw new Error("No draft post for that proposal (is Rule from Buzz on?)");
     const isMark = /^[✅✔☑❌✖🚫⛔+\-]️?$|^:[a-z_]+:$/u.test(content.trim());
+    // Mimic Buzz exactly: its reactions carry only an `e` tag — no `h`, no `p` — which is
+    // the shape the relay refuses to fan out live and the shape the poller must catch.
     const unsigned = isMark
-      ? buildReaction(r.channelId, { id: draftId, pubkey: identity.pubkey }, content.trim(), null)
+      ? { kind: 7, created_at: Math.floor(Date.now() / 1000), tags: [["e", draftId]], content: content.trim() }
       : buildReply(r.channelId, content, { id: draftId, pubkey: identity.pubkey }, null);
     const signed = await identity.sign(unsigned);
     return this.relay.publish(signed);

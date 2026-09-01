@@ -55,6 +55,7 @@ function rig() {
     },
     storageKey: "t",
     storage: { getItem: (k) => storage.get(k) ?? null, setItem: (k, v) => void storage.set(k, v) },
+    pollMs: 150,
   });
   return { relay, sign, proposals, rulings, published };
 }
@@ -75,6 +76,7 @@ test("enabling creates a private drafts channel and posts pending proposals into
   assert.match(posts[0].content, /hello hive/);
   assert.ok(posts[0].tags.some((t) => t[0] === "waggle" && t[1] === "draft"));
   assert.ok(!posts[0].tags.some((t) => t[0] === "proposed-by"), "the draft post is not the message");
+  rulings.disable();
 });
 
 test("✅ from the owner's key signs the real message; a stranger's ✅ does nothing", async () => {
@@ -100,6 +102,21 @@ test("✅ from the owner's key signs the real message; a stranger's ✅ does not
   assert.equal(rulings.state.ruledFromBuzz[proposalId], "sign");
   const thread = await relay.readThread(draftPost.id, drafts.id);
   assert.ok(thread.some((m) => /Signed & sent/.test(m.content)), "receipt posted under the draft");
+  rulings.disable();
+});
+
+test("a Buzz-style reaction (e tag only, no h, never fanned out) is still caught by polling", async () => {
+  const { relay, sign, proposals, rulings, published } = rig();
+  await rulings.enable();
+  const { proposalId } = proposals.propose({ kind: "message", channelId: "general", content: "polled" });
+  await tick();
+  const drafts = (await relay.listChannels()).find((c) => c.name === DRAFTS_CHANNEL_NAME)!;
+  const draftPost = (await relay.readChannel(drafts.id))[0];
+  await relay.publish(await sign({ kind: 7, created_at: 5, tags: [["e", draftPost.id]], content: "✅" }));
+  await new Promise((r) => setTimeout(r, 700)); // > pollMs, < tick budget
+  assert.equal(proposals.get(proposalId)?.status, "sent");
+  assert.equal(published.find((e) => e.tags.some((t) => t[0] === "proposed-by"))?.content, "polled");
+  rulings.disable();
 });
 
 test("a reply under the draft edits the text and signs; ❌ rejects", async () => {
@@ -123,6 +140,7 @@ test("a reply under the draft edits the text and signs; ❌ rejects", async () =
   assert.equal(rulings.state.ruledFromBuzz[a], "edit");
   assert.equal(proposals.get(b)?.status, "rejected");
   assert.equal(rulings.state.ruledFromBuzz[b], "reject");
+  rulings.disable();
 });
 
 test("draft post reads well in a plain client", () => {
