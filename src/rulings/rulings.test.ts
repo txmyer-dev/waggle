@@ -143,6 +143,53 @@ test("a reply under the draft edits the text and signs; ❌ rejects", async () =
   rulings.disable();
 });
 
+test("a stale ruling record from a previous page cannot approve a new proposal with the same id", async () => {
+  // The old page posted proposal #1 as draft "old-draft" and the human ✅'d it. The page
+  // reloaded without persisted proposals; a new proposal is also #1. It must NOT be approved
+  // by the old ✅, and it must get its own fresh draft post.
+  const relay = new MockRelay();
+  const sign = signAs(ME);
+  const published: SignedEvent[] = [];
+  const proposals = new ProposalStore({
+    sign,
+    publish: async (e) => {
+      published.push(e);
+      return relay.publish(e);
+    },
+    resolveMessage: () => undefined,
+    resolveChannelName: () => "general",
+  });
+  const storage = new Map<string, string>();
+  storage.set("t", JSON.stringify({ enabled: true, channelId: null, posted: { 1: { draftId: "old-draft", createdAt: 1 } }, ruledFromBuzz: {} }));
+  const rulings = new Rulings({
+    relay,
+    sign,
+    myPubkey: () => ME,
+    proposals,
+    approve: async (id) => (await proposals.approve(id))?.id ?? null,
+    storageKey: "t",
+    storage: { getItem: (k) => storage.get(k) ?? null, setItem: (k, v) => void storage.set(k, v) },
+    pollMs: 150,
+  });
+  try {
+    await rulings.resume();
+    const drafts = (await relay.listChannels()).find((c) => c.name === DRAFTS_CHANNEL_NAME)!;
+    // an old ✅ sitting on the old draft, from the human's own key (h-tagged so the mock accepts it)
+    await relay.publish(await sign({ kind: 7, created_at: 2, tags: [["e", "old-draft"], ["h", drafts.id]], content: "✅" }));
+    const { proposalId } = proposals.propose({ kind: "message", channelId: "general", content: "brand new" });
+    assert.equal(proposalId, 1, "id collides on purpose");
+    await tick();
+    await tick();
+    assert.equal(proposals.get(1)?.status, "pending", "old ✅ must not approve the new proposal");
+    assert.equal(published.filter((e) => e.tags.some((t) => t[0] === "proposed-by")).length, 0, "nothing signed");
+    const posts = await relay.readChannel(drafts.id);
+    assert.equal(posts.length, 1, "a fresh draft was posted for the new proposal");
+    assert.notEqual(rulings.state.posted[1]?.draftId, "old-draft");
+  } finally {
+    rulings.disable();
+  }
+});
+
 test("draft post reads well in a plain client", () => {
   const p = {
     id: 7,

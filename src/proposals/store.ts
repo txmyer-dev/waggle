@@ -81,10 +81,14 @@ export class ProposalStore {
     try {
       const raw = this.deps.storage && this.deps.storageKey ? this.deps.storage.getItem(this.deps.storageKey) : null;
       if (!raw) return;
-      const items = JSON.parse(raw) as Proposal[];
+      const parsed = JSON.parse(raw) as Proposal[] | { nextId: number; items: Proposal[] };
+      const items = Array.isArray(parsed) ? parsed : parsed.items;
       if (!Array.isArray(items)) return;
       this.items = items;
-      this.nextId = items.reduce((m, p) => Math.max(m, p.id), 0) + 1;
+      // Ids must never restart: a ruling is keyed by proposal id, and a reused id would
+      // let an old ruling land on a new proposal.
+      const savedNext = Array.isArray(parsed) ? 0 : parsed.nextId;
+      this.nextId = Math.max(savedNext || 0, items.reduce((m, p) => Math.max(m, p.id), 0) + 1);
     } catch {
       /* corrupt or unavailable storage: start empty */
     }
@@ -95,7 +99,7 @@ export class ProposalStore {
     try {
       const pending = this.items.filter((p) => p.status === "pending");
       const done = this.items.filter((p) => p.status !== "pending").slice(0, KEEP_DONE);
-      this.deps.storage.setItem(this.deps.storageKey, JSON.stringify([...pending, ...done]));
+      this.deps.storage.setItem(this.deps.storageKey, JSON.stringify({ nextId: this.nextId, items: [...pending, ...done] }));
     } catch {
       /* storage full or unavailable */
     }

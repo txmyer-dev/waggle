@@ -20,8 +20,12 @@ export const DRAFTS_CHANNEL_ABOUT =
 export type RulingsState = {
   enabled: boolean;
   channelId: string | null;
-  /** proposalId → id of the draft post in the drafts channel */
-  posted: Record<number, string>;
+  /**
+   * proposalId → the draft post for it. `createdAt` is the proposal's own creation time and
+   * must match before the record is trusted: it is what stops a ruling on an old draft
+   * from landing on a new proposal that happens to share the id.
+   */
+  posted: Record<number, { draftId: string; createdAt: number }>;
   /** proposals that were ruled from Buzz rather than from the card */
   ruledFromBuzz: Record<number, "sign" | "reject" | "edit">;
   busy: boolean;
@@ -63,7 +67,23 @@ export class Rulings {
   constructor(deps: RulingsDeps) {
     this.deps = deps;
     const saved = this.load();
-    if (saved) this.state = { ...this.state, ...saved };
+    if (saved) this.state = { ...this.state, ...saved, posted: migratePosted(saved.posted) };
+  }
+
+  /** The draft post for this proposal, only if the record provably belongs to it. */
+  private draftFor(p: Proposal): string | undefined {
+    const rec = this.state.posted[p.id];
+    return rec && rec.createdAt === p.createdAt ? rec.draftId : undefined;
+  }
+
+  /** Drop records for proposals that no longer exist or do not match. */
+  private prunePosted(): void {
+    const posted: RulingsState["posted"] = {};
+    for (const [pid, rec] of Object.entries(this.state.posted)) {
+      const p = this.deps.proposals.get(Number(pid));
+      if (p && p.createdAt === rec.createdAt) posted[Number(pid)] = rec;
+    }
+    if (Object.keys(posted).length !== Object.keys(this.state.posted).length) this.set({ posted });
   }
 
   /** Re-arm after a reload if the human had it on. */
@@ -76,6 +96,7 @@ export class Rulings {
     try {
       const channelId = this.state.channelId ?? (await this.findOrCreateChannel());
       this.set({ enabled: true, channelId });
+      this.prunePosted();
       this.listen(channelId);
       await this.catchUp();
       await this.postPending();
@@ -144,9 +165,11 @@ export class Rulings {
    */
   private async catchUp(): Promise<void> {
     if (this.polling) return;
-    const pendingDraftIds = Object.entries(this.state.posted)
-      .filter(([pid]) => this.deps.proposals.get(Number(pid))?.status === "pending")
-      .map(([, draftId]) => draftId);
+    const pendingDraftIds = this.deps.proposals
+      .snapshot()
+      .filter((p) => p.status === "pending")
+      .map((p) => this.draftFor(p))
+      .filter((d): d is string => !!d);
     if (pendingDraftIds.length === 0) return;
     this.polling = true;
     try {
@@ -169,7 +192,7 @@ export class Rulings {
   private async postPending(): Promise<void> {
     if (!this.state.enabled || !this.state.channelId) return;
     for (const p of this.deps.proposals.snapshot()) {
-      if (p.status !== "pending" || this.state.posted[p.id] || this.inFlight.has(p.id)) continue;
+      if (p.status !== "pending" || this.draftFor(p) || this.inFlight.has(p.id)) continue;
       this.inFlight.add(p.id);
       try {
         await this.postDraft(p, this.state.channelId);
@@ -185,12 +208,12 @@ export class Rulings {
     const author = p.target ? this.deps.authorName?.(p.target.pubkey) : undefined;
     const signed = await this.deps.sign(buildDraftPost(channelId, formatDraftPost(p, author), p.id, this.now()));
     await this.deps.relay.publish(signed);
-    this.set({ posted: { ...this.state.posted, [p.id]: signed.id } });
+    this.set({ posted: { ...this.state.posted, [p.id]: { draftId: signed.id, createdAt: p.createdAt } } });
   }
 
   private async postOutcome(p: Proposal, outcome: Outcome): Promise<void> {
     const channelId = this.state.channelId;
-    const draftId = this.state.posted[p.id];
+    const draftId = this.draftFor(p);
     if (!channelId || !draftId) return;
     const unsigned = buildOutcomePost(
       channelId,
@@ -207,8 +230,10 @@ export class Rulings {
 
   private proposalForDraft(draftId: string | undefined): Proposal | undefined {
     if (!draftId) return undefined;
-    const hit = Object.entries(this.state.posted).find(([, d]) => d === draftId);
-    return hit ? this.deps.proposals.get(Number(hit[0])) : undefined;
+    const hit = Object.entries(this.state.posted).find(([, rec]) => rec.draftId === draftId);
+    if (!hit) return undefined;
+    const p = this.deps.proposals.get(Number(hit[0]));
+    return p && p.createdAt === hit[1].createdAt ? p : undefined;
   }
 
   private async onReaction(r: Message): Promise<void> {
@@ -287,6 +312,18 @@ export class Rulings {
       /* storage unavailable */
     }
   }
+}
+
+/** Records written by the first release were bare draft ids; they cannot be verified, so they are dropped. */
+function migratePosted(raw: unknown): RulingsState["posted"] {
+  const out: RulingsState["posted"] = {};
+  if (!raw || typeof raw !== "object") return out;
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (v && typeof v === "object" && typeof (v as { draftId?: unknown }).draftId === "string" && typeof (v as { createdAt?: unknown }).createdAt === "number") {
+      out[Number(k)] = v as { draftId: string; createdAt: number };
+    }
+  }
+  return out;
 }
 
 function targetOf(reaction: Message): string | undefined {

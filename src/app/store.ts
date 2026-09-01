@@ -221,7 +221,7 @@ export class AppStore {
   async simulateBuzzRuling(proposalId: number, content: string): Promise<string> {
     const identity = this.state.identity;
     const r = this.rulings?.state;
-    const draftId = r?.posted[proposalId];
+    const draftId = r?.posted[proposalId]?.draftId;
     if (!identity || !r?.channelId || !draftId) throw new Error("No draft post for that proposal (is Rule from Buzz on?)");
     const isMark = /^[✅✔☑❌✖🚫⛔+\-]️?$|^:[a-z_]+:$/u.test(content.trim());
     // Mimic Buzz exactly: its reactions carry only an `e` tag — no `h`, no `p` — which is
