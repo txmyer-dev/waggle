@@ -7,7 +7,11 @@ said, not read — if a sentence fights your mouth, change it, keep the beat.
 
 - Relay freshly reseeded; Waggle tab hard-reloaded; no leftover cards in the dock.
 - Waggle in ChatGPT desktop → **Work** → built-in browser. Header: **WebMCP · 12 tools** green,
-  **Rule from Buzz · on**, owner key in both Waggle and Buzz desktop.
+  **Rule from Buzz · on**.
+- **Identity check, every session:** the npub in Waggle's 🔑 chip must MATCH the npub Buzz shows
+  for you. ChatGPT's browser storage can reset itself and silently mint a fresh key — then drafts
+  go to a stranger's private channel and signed replies come from a stranger. Import the nsec
+  again if they differ.
 - Buzz desktop on `#general`, window beside ChatGPT. Phone with Buzz on `#waggle-drafts` if it runs.
 - Rehearse Scene 2 twice; ChatGPT's tool discovery is slow — you'll cut that dead air.
 - 1440×900-ish windows, dark theme everywhere, bookmarks bar hidden.
