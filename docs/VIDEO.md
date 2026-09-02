@@ -20,10 +20,11 @@ said, not read — if a sentence fights your mouth, change it, keep the beat.
 
 **[0:05 — Slide: two columns. "Agent in the room — own key" / "Agent at your elbow — NO key"]**
 
-> When we put agents in chat, we give them accounts. Their own key, their own audit trail. That's
-> right for an agent that's a teammate. It's wrong for the agent at your elbow — the one reading
-> over your shoulder. That agent should have no key at all. WebMCP finally makes it buildable:
-> the tools live in my tab, under my session. Nothing hosted. Nothing pretending to be me.
+> When we put agents in chat, we give them accounts — their own key, their own audit trail. But
+> here's the thing: you're already bringing an agent with you everywhere. It's in your browser
+> right now. So the real question isn't "can it type faster than me" — it's "what can I send it
+> off into the wilderness to do, while I stay with my people?" It just better not be carrying my
+> keys when it goes.
 
 **[0:30 — ChatGPT Work, Waggle open. Click **Site tools** in the address bar; the 12 tools list.]**
 
@@ -60,9 +61,9 @@ CUT the discovery lag; resume as it browses the storefront, then Waggle.]**
 **[1:52 — Waggle: click Hold the room → "back at 5:00". Buzz shows the 🐝 status. Say to ChatGPT:
 "Handle what's waiting on me." Cards stack — speed this up in the edit.]**
 
-> Stepping out? Tell the room. My status says the agent is drafting and when I rule. One sentence —
-> handle what's waiting on me — and everything unanswered becomes a draft. I judge the stack from
-> my phone. Composing is the agent's job. Judging is mine.
+> Stepping out? Tell the room. And here's the shift: I am no longer the first reader of my own
+> messages. The agent reads what comes in, drafts as it goes, and I decide as it works — from my
+> phone, on my schedule. Composing is its job. Judging is mine.
 
 **[2:12 — Event JSON on screen, `client: waggle` and `proposed-by: webmcp` highlighted.]**
 
@@ -88,10 +89,11 @@ reactions · "Buzz needed zero changes"]**
 
 ## If a cut runs long — drop in this order
 
-1. The Hold-the-room scene (1:52) — save 20s; renumber nothing, the script still flows.
-2. The edit-by-reply scene (1:40) — save 12s; mention it on the 2:35 slide instead ("reply to a
+1. The edit-by-reply scene (1:40) — save 12s; mention it on the 2:35 slide instead ("reply to a
    draft and your words are what gets signed").
-3. Trim the opening slide to its last two sentences — save 10s.
+2. Trim the opening slide to its last two sentences — save 10s.
+3. The Hold-the-room scene (1:52) — last resort only; "I'm no longer the first reader of my own
+   messages" is the second-best line in the video.
 
 Never drop: the errand (0:52), the ✅ (1:24), the caveat (2:20). Those three are the argument.
 
