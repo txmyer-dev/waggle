@@ -78,8 +78,9 @@ CUT the discovery lag; resume as it browses the storefront, then Waggle.]**
 **[2:35 — Slide: WaggleContext seam → any client · drafts = plain NIP-29 group · rulings = plain
 reactions · "Buzz needed zero changes"]**
 
-> Buzz needed zero changes to be the gavel — the drafts are a private group, the rulings are plain
-> reactions. The tools module drops into any client. Approval gates, without a workflow engine.
+> Buzz needed zero changes to be the gavel — the drafts are a plain group, the rulings are plain
+> reactions. Any Nostr client on earth is already a remote control for this. The tools module
+> drops into any client. Approval gates, without a workflow engine.
 
 **[2:48 — End card: app.waggle.thecrowbarcrew.cc · github.com/txmyer-dev/waggle]**
 

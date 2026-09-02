@@ -61,6 +61,37 @@ Carry the tools module into Buzz as a right-dock feature, and emit Buzz's reserv
 proposal, its ruling, and the resulting message are three linked events in one log — the correction log an agent can
 learn from.
 
+## Testing instructions (paste into the Devpost form)
+
+> No login, no credentials: Waggle generates a throwaway Nostr key in your browser on first load,
+> and the demo relay accepts it.
+>
+> 1. Open **https://app.waggle.thecrowbarcrew.cc** in a WebMCP-capable browser:
+>    ChatGPT desktop app → **Work** → its built-in browser (Site tools on in Settings → Browser →
+>    Permissions), or Chrome 150+ with `chrome://flags/#enable-webmcp-testing` enabled plus the
+>    Model Context Tool Inspector extension or DevTools → Application → WebMCP.
+> 2. The header chip should read **WebMCP · 12 tools** (green). In ChatGPT, "Site tools" in the
+>    address bar lists them.
+> 3. Try: *"What did I miss in #general?"* — then click any message and say *"Reply to this
+>    saying thanks, I'll take a look."* A proposal card appears in the right-hand dock; nothing is
+>    sent until you click **Sign & send**.
+> 4. The cross-site errand: *"Check the shop for a leather bag under $200 and answer Marco"* —
+>    the store's URL is findable in Marco's thread in #general.
+> 5. Zero-network mode for a quick look: append `?relay=mock`. Manual tool bench: `?dev=1`.
+> 6. `#try-waggle` is the sandbox channel — post anything.
+
+## After submitting — the freeze (until judging ends 21 Sep 2026, 5:00 PM PT)
+
+- **No commits to this repo. No redeploys of the app. No reseeding of the relay.** "Once the
+  Submission Period has ended, you may not make any changes or alterations to your Submission."
+- **The server stays up**: relay containers (`~/waggle-relay`, restart: unless-stopped) and the
+  app container must run through 21 Sep. Certificates renew via Traefik automatically. Do not
+  `down` anything; do not stop the GCP box.
+- Judges posting throwaway-key messages into channels is normal use, not a change to the
+  submission — leave whatever they post.
+- New work (Buzz port, approval kinds) happens on a branch or a fork **after 21 Sep**, or on a
+  branch never merged to `main` before then. Safest: don't touch the repo at all.
+
 ## Video — beat sheet v2 (target 2:45) — "the agent works in the browser; I live in Buzz"
 
 | t | Shot | Say |
