@@ -2,6 +2,15 @@
 
 **Your agent can dance. Only you can fly.**
 
+<p align="center">
+  <a href="https://app.waggle.thecrowbarcrew.cc"><img src="https://img.shields.io/badge/Live-app.waggle.thecrowbarcrew.cc-f5a623?style=flat-square" alt="Live demo" /></a>
+  <a href="https://github.com/webmachinelearning/webmcp"><img src="https://img.shields.io/badge/WebMCP-document.modelContext-4285F4?style=flat-square" alt="WebMCP" /></a>
+  <a href="https://github.com/nostr-protocol/nips/blob/master/29.md"><img src="https://img.shields.io/badge/Protocol-Nostr_NIP--29%2F42%2F50-8E44AD?style=flat-square" alt="NIP-29" /></a>
+  <a href="https://github.com/block/buzz"><img src="https://img.shields.io/badge/Relay-Buzz-FFC107?style=flat-square" alt="Buzz relay" /></a>
+  <a href="scripts/e2e.mjs"><img src="https://img.shields.io/badge/Tests-offline%2C_zero_network-34A853?style=flat-square" alt="Tests" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-0366d6?style=flat-square" alt="MIT" /></a>
+</p>
+
 Waggle is a small [NIP-29](https://github.com/nostr-protocol/nips/blob/master/29.md) group-chat client that publishes
 [WebMCP](https://github.com/webmachinelearning/webmcp) tools into the page. The agent living in your browser — ChatGPT's
 in-app browser, or Chrome with WebMCP enabled — can read everything you can see: channels, threads, the message you
@@ -31,6 +40,24 @@ WebMCP makes that agent possible without a server, an OAuth dance, or a bot acco
 
 So the division of labour is honest: the agent does the reading and drafting, you do the judging, and the page is the
 shared workbench where both of you can see the same state.
+
+```mermaid
+flowchart LR
+    subgraph TAB ["Your browser tab (the signer — key never leaves)"]
+        TOOLS["12 WebMCP tools<br/>7 read · 5 propose"]
+        DOCK["Waggles dock<br/>proposal cards"]
+        SIGN["Sign with<br/>your key"]
+    end
+    AGENT["Browser agent<br/>(ChatGPT Work · Chrome)"] -- "executeTool()" --> TOOLS
+    TOOLS -- "propose_*" --> DOCK
+    DOCK -- "🐝 draft post" --> DRAFTS["#waggle-drafts<br/>private NIP-29 group"]
+    DRAFTS -- "read in Buzz,<br/>any device" --> HUMAN["You<br/>✅ sign · ❌ reject · reply = edit"]
+    HUMAN -- "reaction / reply<br/>(signed by you)" --> DRAFTS
+    DRAFTS -- "polled ruling" --> SIGN
+    DOCK -- "Sign & send<br/>(in-tab click)" --> SIGN
+    SIGN -- "kind 9 + proposed-by tag" --> RELAY["Buzz relay"]
+    RELAY --> ROOM["#general<br/>Buzz shows the 🐝"]
+```
 
 ### Rule from Buzz
 

@@ -80,7 +80,7 @@ learn from.
 | 2:15 | Slide: `WaggleContext` seam · drafts channel = private NIP-29 group · rulings = plain kind 7 / kind 9 | "Buzz needed zero changes to be the gavel. The tools module drops into any client. Approval gates, no workflow engine." |
 | 2:35 | End card: URL, repo | "Waggle. The agent dances. You decide whether to fly." |
 
-Recording notes: same nsec in Buzz and Waggle (import the owner key from `~/waggle-relay/OWNER_KEY.txt` in both). Waggle tab stays open the whole time — it is the signer. Rehearse the ChatGPT segment three times and keep the best take. Phone shot: Buzz mobile if it runs; else Buzz desktop's `#waggle-drafts` is fine.
+Recording notes: same nsec in Buzz and Waggle (import the relay owner nsec in both). Waggle tab stays open the whole time — it is the signer. Rehearse the ChatGPT segment three times and keep the best take. Phone shot: Buzz mobile if it runs; else Buzz desktop's `#waggle-drafts` is fine.
 
 ## Video — beat sheet v1 (superseded, kept for reference)
 
