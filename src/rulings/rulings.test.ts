@@ -190,6 +190,39 @@ test("a stale ruling record from a previous page cannot approve a new proposal w
   }
 });
 
+test("a remembered drafts channel that the relay no longer has is recreated, stale drafts forgotten", async () => {
+  const relay = new MockRelay();
+  const sign = signAs(ME);
+  const proposals = new ProposalStore({
+    sign,
+    publish: async (e) => relay.publish(e),
+    resolveMessage: () => undefined,
+    resolveChannelName: () => "general",
+  });
+  const storage = new Map<string, string>();
+  storage.set("t", JSON.stringify({ enabled: true, channelId: "dead-channel", posted: { 1: { draftId: "dead-draft", createdAt: 1 } }, ruledFromBuzz: {} }));
+  const rulings = new Rulings({
+    relay,
+    sign,
+    myPubkey: () => ME,
+    proposals,
+    approve: async () => null,
+    storageKey: "t",
+    storage: { getItem: (k) => storage.get(k) ?? null, setItem: (k, v) => void storage.set(k, v) },
+    pollMs: 150,
+  });
+  try {
+    await rulings.resume();
+    assert.notEqual(rulings.state.channelId, "dead-channel");
+    assert.deepEqual(rulings.state.posted, {});
+    const drafts = (await relay.listChannels()).find((c) => c.name === DRAFTS_CHANNEL_NAME);
+    assert.ok(drafts, "a fresh drafts channel was created");
+    assert.equal(rulings.state.channelId, drafts.id);
+  } finally {
+    rulings.disable();
+  }
+});
+
 test("draft post reads well in a plain client", () => {
   const p = {
     id: 7,

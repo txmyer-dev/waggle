@@ -94,7 +94,15 @@ export class Rulings {
   async enable(): Promise<void> {
     this.set({ busy: true, error: null });
     try {
-      const channelId = this.state.channelId ?? (await this.findOrCreateChannel());
+      // A remembered channel is only trusted if the relay still has it — a relay reset
+      // (or pointing at a different relay) leaves a dead id behind, and every draft
+      // posted there would fail. Recreate, and forget draft records that died with it.
+      let channelId = this.state.channelId;
+      if (channelId && !(await this.deps.relay.listChannels()).some((c) => c.id === channelId)) {
+        channelId = null;
+        this.set({ channelId: null, posted: {} });
+      }
+      channelId = channelId ?? (await this.findOrCreateChannel());
       this.set({ enabled: true, channelId });
       this.prunePosted();
       this.listen(channelId);
