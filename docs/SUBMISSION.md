@@ -1,6 +1,6 @@
 # Submission kit — The WebMCP Challenge
 
-Deadline: **Wednesday 3 September 2026, 1:00 PM PDT** (4:00 PM EDT). Devpost: https://webmcp.devpost.com/
+Deadline: **Thursday 3 September 2026, 4:00 PM EDT** (1:00 PM PDT). Devpost: https://webmcp.devpost.com/
 
 ## Checklist
 
