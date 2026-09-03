@@ -29,11 +29,12 @@ own audit trail. But here's the thing: you're already bringing an agent with you
 in your browser right now. So the real question isn't "can it type faster than me" — it's "what
 can I send it off into the wilderness to do?"
 
-Waggle is the answer for the room where I actually live. It's a chat client that hands the
-browser's agent twelve WebMCP tools: it can read everything I can see, search every thread, run
-errands across other WebMCP sites — and it cannot send a single word. Every write it wants becomes
-a proposal, and the proposal waits for my signature. I rule from anywhere — one ✅ in Buzz, from my
-phone — because a signed reaction *is* an approval. The agent dances. Only I can fly.
+If WebMCP is where the agent lives in the browser, Waggle is the room where I live. It's a chat
+client that hands the browser's agent twelve WebMCP tools. It can read every word, search every
+thread, run errands across other WebMCP sites — but it cannot send a single word. Every write it
+wants becomes a proposal, and the proposal waits for my signature. I rule via Buzz with one ✅ —
+from my laptop, from my phone — because a signed reaction *is* an approval. The agent dances.
+Only I can fly.
 
 ### Inspiration
 
