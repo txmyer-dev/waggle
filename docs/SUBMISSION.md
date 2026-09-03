@@ -18,7 +18,7 @@ Deadline: **Thursday 3 September 2026, 4:00 PM EDT** (1:00 PM PDT). Devpost: htt
 
 **Title:** Waggle
 
-**Tagline:** Your agent can dance. Only you can fly. A chat client where the browser's agent can read everything and sign nothing.
+**Tagline (196/200 chars):** If Buzz is where I work, Waggle is where my agent works. It reads every word, runs errands across the web — and can't send one. Every write waits for my signed ✅. The agent dances. Only I can fly.
 
 **Built with:** WebMCP · TypeScript · React · Vite · nostr-tools · Nostr (NIP-29/42/50) · Buzz relay · Docker · Traefik
 
