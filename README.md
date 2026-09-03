@@ -1,5 +1,7 @@
 # Waggle 🐝
 
+![Waggle — a WebMCP + Nostr NIP-29 agent-human chat application: channels, the Waggles proposal dock with a draft waiting for approval, and a mixed human-agent thread](docs/hero.jpg)
+
 **Your agent can dance. Only you can fly.**
 
 <p align="center">
