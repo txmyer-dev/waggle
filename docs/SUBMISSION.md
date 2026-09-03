@@ -22,6 +22,19 @@ Deadline: **Thursday 3 September 2026, 4:00 PM EDT** (1:00 PM PDT). Devpost: htt
 
 **Built with:** WebMCP · TypeScript · React · Vite · nostr-tools · Nostr (NIP-29/42/50) · Buzz relay · Docker · Traefik
 
+### Elevator pitch
+
+When we put agents in chat, we give them accounts — their own key, their own memberships, their
+own audit trail. But here's the thing: you're already bringing an agent with you everywhere. It's
+in your browser right now. So the real question isn't "can it type faster than me" — it's "what
+can I send it off into the wilderness to do?"
+
+Waggle is the answer for the room where I actually live. It's a chat client that hands the
+browser's agent twelve WebMCP tools: it can read everything I can see, search every thread, run
+errands across other WebMCP sites — and it cannot send a single word. Every write it wants becomes
+a proposal, and the proposal waits for my signature. I rule from anywhere — one ✅ in Buzz, from my
+phone — because a signed reaction *is* an approval. The agent dances. Only I can fly.
+
 ### Inspiration
 
 Every "agent in chat" design we have seen gives the agent an account: its own key, its own memberships, its own
